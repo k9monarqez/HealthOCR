@@ -21,9 +21,9 @@ import java.nio.ByteBuffer
 
 
 @OptIn(ExperimentalGetImage::class)
-fun cropImageProxy(imageProxy: ImageProxy, cropRect: org.opencv.core.Rect, previewSize: Offset): Mat{
+fun cropImage(image: Image?, cropRect: org.opencv.core.Rect, previewSize: Offset): Mat{
     try {
-        imageProxy.image?.let {
+        image?.let {
             if (it.format == ImageFormat.JPEG) {
                 val rgbaMat = it.jpegToRgba()
                 val coefficient = rgbaMat.height() / previewSize.y

@@ -1,8 +1,8 @@
-package com.example.swagaapp.pages
+package com.example.swagaapp.pages.camera
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
-import android.graphics.Bitmap.createBitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
@@ -28,6 +28,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -49,13 +50,17 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -63,19 +68,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
@@ -88,23 +98,25 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import coil.compose.AsyncImage
+import com.canhub.cropper.CropImageView
 import com.example.swagaapp.AppViewModel
 import com.example.swagaapp.R
-import com.example.swagaapp.ocr.cropImageProxy
-import com.googlecode.leptonica.android.WriteFile
-import com.googlecode.tesseract.android.TessBaseAPI
-import com.tanishranjan.cropkit.CropDefaults
-import com.tanishranjan.cropkit.CropShape
-import com.tanishranjan.cropkit.ImageCropper
-import com.tanishranjan.cropkit.rememberCropController
+import com.example.swagaapp.ocr.cropImage
 import org.opencv.android.Utils
+import org.opencv.core.CvType
+import org.opencv.core.Mat
 import org.opencv.core.Point
 import kotlin.math.roundToInt
+import org.opencv.core.Rect
 
+@kotlin.OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun Camera(
     viewModel: AppViewModel,
+    toAnalyzedImage: () -> Unit,
+    toDeviceSetup: () -> Unit,
+    showDeviceSelectors: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -122,17 +134,18 @@ fun Camera(
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
         }
     }
+    val cropImageView = CropImageView(context).apply {}
 
-    var extractedText by remember { mutableStateOf("") }
     var bmp by remember { mutableStateOf<Bitmap?>(null) }
 
-    var cropRectPosition = org.opencv.core.Rect()
+    var cropRectPosition = Rect()
     val cropRectTopLeft = remember { mutableStateOf(Point(0.0, 0.0)) }
     val cropRectSize = remember { mutableStateOf(Offset.Zero) }
 
     var imgBitmap by remember { mutableStateOf<Bitmap?>(null) }
     val pickMedia = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
+            cropImageView.setImageUriAsync(uri)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 val source = ImageDecoder.createSource(context.contentResolver, uri)
                 imgBitmap = ImageDecoder.decodeBitmap(source)
@@ -144,8 +157,11 @@ fun Camera(
         }
     }
 
-    LaunchedEffect(Unit) {
+    val mat by viewModel.mat.collectAsState()
+
+    LaunchedEffect(Unit, mat, viewModel.devices) {
         previewView.controller = cameraController
+        if(!mat.empty()) toAnalyzedImage()
     }
 
     fun capturePhoto() {
@@ -153,30 +169,14 @@ fun Camera(
             viewModel.cameraExecutor,
             object: ImageCapture.OnImageCapturedCallback() {
                 @OptIn(ExperimentalGetImage::class)
-                override fun onCaptureSuccess(image: ImageProxy) {
-                    val mat = cropImageProxy(
-                        image,
-                        cropRectPosition,
-                        Offset(previewView.width.toFloat(), previewView.height.toFloat())
+                override fun onCaptureSuccess(imageProxy: ImageProxy) {
+                    viewModel.setMat(
+                        cropImage(
+                            imageProxy.image,
+                            cropRectPosition,
+                            Offset(previewView.width.toFloat(), previewView.height.toFloat())
+                        )
                     )
-
-                    bmp = createBitmap(mat.width(), mat.height(), Bitmap.Config.ARGB_8888);
-                    Utils.matToBitmap(mat, bmp)
-
-//                    val tess = TessBaseAPI()
-//                    val dataPath = File(context.filesDir, "tesseract").absolutePath
-//                    if (!tess.init(dataPath, "eng")) {
-//                        tess.recycle();
-//                        return;
-//                    }
-//
-//
-//
-//                    tess.setVariable("tessedit_char_whitelist", "0123456789.")
-//                    tess.setImage(bmp);
-//                    bmp = WriteFile.writeBitmap(tess.thresholdedImage)
-//                    extractedText = tess.utF8Text
-//                    tess.recycle()
                 }
             }
         )
@@ -193,18 +193,26 @@ fun Camera(
         val topAreaHeight = viewHeight * 0.1f
         val cropRectAreaHeight = viewHeight * 0.6f
         val bottomAreaHeight = viewHeight * 0.3f
-
         val buttonCircleRadius = viewWidth * 0.2f
-
         val displayCutoutPaddingValue = with(LocalDensity.current){ WindowInsets.displayCutout.asPaddingValues().calculateTopPadding().toPx() }
+
+        var showDeviceSelector = remember { mutableStateOf(false) }
+        val deviceSelectorSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        if(showDeviceSelectors){
+            ModalSheets(
+                viewModel,
+                Pair(showDeviceSelector, deviceSelectorSheetState),
+                toDeviceSetup
+            )
+        }
 
         if(imgBitmap == null){
             if(bmp == null) {
-                AndroidView(
-                    factory = { previewView },
-                    modifier = Modifier
-                        .fillMaxSize()
-                )
+//                AndroidView(
+//                    factory = { previewView },
+//                    modifier = Modifier
+//                        .fillMaxSize()
+//                )
 
                 Box(
                     modifier = Modifier
@@ -257,10 +265,78 @@ fun Camera(
                                     .height(topAreaHeight),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Button(
-                                    onClick = {}
-                                ) {
-                                    Text("Device")
+                                if(showDeviceSelectors){
+                                    val buttonHeight = topAreaHeight * 0.7f
+                                    val selectedDeviceBitmap = remember { mutableStateOf<Bitmap?>(null) }
+                                    val selectedDevice by viewModel.selectedDevice.collectAsState()
+                                    val iconSize = buttonHeight
+                                    Box(
+                                        modifier = Modifier
+                                            .size(viewWidth * 0.9f, buttonHeight)
+                                            .clickable(
+                                                onClick = { showDeviceSelector.value = true }
+                                            )
+                                            .clip(RoundedCornerShape(5.dp))
+                                            .background(Color.White)
+                                    ){
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxSize(),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(15.dp, Alignment.Start)
+                                        ){
+
+                                            LaunchedEffect(selectedDevice) {
+                                                selectedDevice?.let {
+                                                    viewModel.loadDeviceBitmap(it.deviceImageURI, selectedDeviceBitmap)
+                                                }
+                                            }
+                                            if(selectedDevice != null){
+                                                Icon(
+                                                    bitmap = (selectedDeviceBitmap.value ?: BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus))
+                                                        .asImageBitmap(),
+                                                    contentDescription = "Selected device",
+                                                    tint = Color.Unspecified,
+                                                    modifier = Modifier
+                                                        .size(iconSize)
+                                                )
+                                                Column(){
+                                                    Text(deviceTypeToRu(selectedDevice!!.deviceType), fontWeight = FontWeight.Bold)
+                                                    Text(selectedDevice!!.deviceName)
+                                                }
+                                            }
+                                            else{
+                                                Box(
+                                                    modifier = Modifier
+                                                        .size(iconSize),
+                                                    contentAlignment = Alignment.Center
+                                                ){
+                                                    Icon(
+                                                        bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus).asImageBitmap(),
+                                                        contentDescription = "Selected device",
+                                                        tint = Color.Unspecified,
+                                                        modifier = Modifier
+                                                            .size(30.dp)
+                                                    )
+                                                }
+                                                Text("Добавить устройство")
+                                            }
+                                        }
+                                        if(selectedDevice != null) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(iconSize, iconSize)
+                                                    .align(Alignment.CenterEnd),
+                                                contentAlignment = Alignment.Center
+                                            ){
+                                                Icon(
+                                                    painterResource(R.drawable.settings),
+                                                    contentDescription = "",
+                                                )
+                                            }
+
+                                        }
+                                    }
                                 }
                             }
 
@@ -312,7 +388,7 @@ fun Camera(
                                             modifier = Modifier
                                                 .size(buttonCircleRadius),
                                             onClick = {
-                                                cropRectPosition = org.opencv.core.Rect(
+                                                cropRectPosition = Rect(
                                                     cropRectTopLeft.value,
                                                     Point(
                                                         cropRectTopLeft.value.x + cropRectSize.value.x,
@@ -366,17 +442,8 @@ fun Camera(
             }
         }
         else{
+            viewModel.showBottomNavBar.value = false
             val backgroundColor = averageColor(imgBitmap!!)
-            val cropController = rememberCropController(
-                bitmap = imgBitmap!!,
-                cropOptions = CropDefaults.cropOptions(
-                    cropShape = CropShape.FreeForm
-                ),
-                cropColors = CropDefaults.cropColors(
-//                    cropRectangle = invertedBGColor.copy(0.5f),
-                    gridlines = Color(backgroundColor).copy(0.5f),
-                )
-            )
 
             Box(
                 modifier = Modifier
@@ -386,11 +453,11 @@ fun Camera(
                     .navigationBarsPadding(),
                 contentAlignment = Alignment.Center
             ) {
-                ImageCropper(
+                AndroidView(
+                    factory = { cropImageView },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    cropController = cropController
+                        .fillMaxSize()
+                        .padding(24.dp)
                 )
 
                 Row(
@@ -402,6 +469,7 @@ fun Camera(
                     Button(
                         modifier = Modifier,
                         onClick = {
+                            viewModel.showBottomNavBar.value = true
                             imgBitmap = null
                         },
                         colors = ButtonColors(
@@ -417,7 +485,16 @@ fun Camera(
                     Button(
                         modifier = Modifier,
                         onClick = {
-                            val croppedBitmap = cropController.crop()
+                            var croppedBitmap: Bitmap? = cropImageView.getCroppedImage()
+                            croppedBitmap = if (croppedBitmap!!.config == Bitmap.Config.HARDWARE) {
+                                croppedBitmap.copy(Bitmap.Config.ARGB_8888, false)
+                            } else {
+                                croppedBitmap
+                            }
+
+                            val bmp = Mat(croppedBitmap.height, croppedBitmap.width, CvType.CV_8UC4)
+                            Utils.bitmapToMat(croppedBitmap, bmp)
+                            viewModel.setMat(bmp)
                         },
                         colors = ButtonColors(
                             containerColor = Color.White,
@@ -746,103 +823,3 @@ fun CaptureButton(
         }
     }
 }
-
-//
-//@Composable
-//fun CropRectOld(
-//    modifier: Modifier = Modifier,
-//    contentAlignment: Alignment = Alignment.TopStart,
-//    min: Offset = Offset(1f, 1f),
-//    max: Offset = Offset(1f, 1f),
-//    size: MutableState<Offset> = mutableStateOf(Offset.Zero),
-//    topLeft: MutableState<Point> = mutableStateOf(Point())
-//){
-//    BoxWithConstraints(
-//        modifier = modifier
-//            .fillMaxSize(),
-//        contentAlignment = contentAlignment
-//    ) {
-//        val minRectWidth = maxWidth * min.x
-//        val minRectHeight = maxHeight * min.y
-//
-//        val maxRectWidth = maxWidth * max.x
-//        val maxRectHeight = maxHeight * max.y
-//
-//        var rectWidth by remember { mutableStateOf(maxRectWidth) }
-//        var rectHeight by remember { mutableStateOf(maxRectHeight) }
-//
-//        var firstDrag by remember {mutableStateOf(Offset.Zero)}
-//        var firstRectWidth by remember { mutableStateOf(0.dp) }
-//        var firstRectHeight by remember { mutableStateOf(0.dp) }
-//
-//        size.value = Offset(
-//            with(LocalDensity.current){ rectWidth.toPx() },
-//            with(LocalDensity.current){ rectHeight.toPx() }
-//        )
-//
-//        BoxWithConstraints(
-//            modifier = Modifier
-//                .size(rectWidth, rectHeight)
-//                .onGloballyPositioned(
-//                    { coordinates ->
-//                        val coordinates = coordinates.positionInRoot()
-//                        topLeft.value = Point(coordinates.x.toDouble(), coordinates.y.toDouble())
-//                    }
-//                )
-//                .pointerInput(Unit) {
-//                    detectDragGestures(
-//                        onDragStart = { offset ->
-//                            firstDrag = offset
-//                            firstRectWidth = rectWidth
-//                            firstRectHeight = rectHeight
-//                            println("$firstDrag ${size.value.x / 2f} ${(size.value.y / 2f)}")
-//                        },
-//                        onDrag = { change, dragAmount ->
-//                            var vectorX = dragAmount.x.toDp()
-//                            var vectorY = dragAmount.y.toDp()
-//
-//                            if (firstDrag.x in 0f..<(firstRectWidth.toPx() / 2f)) {
-//                                vectorX = -vectorX
-//                            }
-//                            if (firstDrag.y in 0f..<(firstRectHeight.toPx() / 2f)) {
-//                                vectorY = -vectorY
-//                            }
-//
-//                            val res = DpOffset(rectWidth + vectorX, rectHeight + vectorY)
-//
-//                            rectWidth =
-//                                if (res.x < minRectWidth) minRectWidth
-//                                else if (res.x > maxRectWidth) maxRectWidth
-//                                else res.x
-//
-//                            rectHeight =
-//                                if (res.y < minRectHeight) minRectHeight
-//                                else if (res.y > maxRectHeight) maxRectHeight
-//                                else res.y
-//                        }
-//                    )
-//                }
-//                .border(
-//                    width = 1.dp,
-//                    color = Color.Red
-//                )
-//        ){
-//            Canvas(
-//                modifier = Modifier
-//            ){
-//                drawLine(
-//                    color = Color.Red,
-//                    start = Offset((rectWidth / 2 - maxRectWidth * 0.05f).toPx(), (rectHeight / 2).toPx()),
-//                    end = Offset((rectWidth / 2 + maxRectWidth * 0.05f).toPx(), (rectHeight / 2).toPx()),
-//                    strokeWidth = 1.dp.toPx()
-//                )
-//                drawLine(
-//                    color = Color.Red,
-//                    start = Offset((rectWidth / 2).toPx(), (rectHeight / 2 - maxRectWidth * 0.05f).toPx()),
-//                    end = Offset((rectWidth / 2).toPx(), (rectHeight / 2 + maxRectWidth * 0.05f).toPx()),
-//                    strokeWidth = 1.dp.toPx()
-//                )
-//            }
-//        }
-//    }
-//}

@@ -10,15 +10,16 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
 import com.example.swagaapp.nav.AppNavigation
+import com.example.swagaapp.nav.BottomNavigationBar
 import com.example.swagaapp.nav.NavRoutes
 import org.opencv.android.OpenCVLoader
 import java.io.File
@@ -27,7 +28,7 @@ import java.io.IOException
 
 class MainActivity : ComponentActivity() {
     private lateinit var requestPermissionLauncher: ActivityResultLauncher<String>
-    private val viewModel: AppViewModel by viewModels()
+    private lateinit var viewModel: AppViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -43,7 +44,12 @@ class MainActivity : ComponentActivity() {
 
         copyTrainedData(applicationContext)
         setContent {
-            MainComponent(viewModel)
+            val owner = LocalViewModelStoreOwner.current
+
+            owner?.let {
+                viewModel = viewModel()
+                MainComponent(viewModel)
+            }
         }
 
         requestPermissionLauncher = registerForActivityResult(
@@ -62,16 +68,22 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainComponent(viewModel: AppViewModel){
     val navController = rememberNavController()
-    val startDestination = NavRoutes.Home.route
+    val startDestination = NavRoutes.Camera.route
     val selectedDestination = remember { mutableStateOf(startDestination) }
 
-    Surface(
-        //bottomBar = { BottomNavigationBar(navController, selectedDestination) }
-    ) {
+    Scaffold(
+        bottomBar = {
+            if(viewModel.showBottomNavBar.value){
+                BottomNavigationBar(navController, selectedDestination)
+            }
+        }
+    ) { paddingValues ->
         AppNavigation(
             modifier = Modifier,
             navController = navController,
+            startDestination = startDestination,
             viewModel = viewModel,
+            scaffoldPaddingValues = paddingValues
         )
     }
 }
