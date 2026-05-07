@@ -22,6 +22,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "SwagaApp"
+rootProject.name = "HealthOCR"
 include(":app")
 include(":OpenCV")
