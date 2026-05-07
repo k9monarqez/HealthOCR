@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Log
+import androidx.sqlite.db.SimpleSQLiteQuery
 import com.example.swagaapp.db.AppDAO
 import com.example.swagaapp.db.DBDevice
 import com.example.swagaapp.ocr.devices.Device
@@ -42,7 +43,7 @@ class DeviceRepository(private val context: Context, private val appDAO: AppDAO)
                 dbDevicesList.forEach { dbDevice ->
                     val stages = adapter.fromJson(dbDevice.stages)
                     stages?.let {
-                        if(!withDeleted && dbDevice.isDeleted == 0L){
+                        if(!withDeleted && dbDevice.isDeleted == 0L || withDeleted){
                             devicesList.add(
                                 DeviceParameters(
                                     id = dbDevice.id,
@@ -53,6 +54,36 @@ class DeviceRepository(private val context: Context, private val appDAO: AppDAO)
                                 )
                             )
                         }
+                    }
+                }
+
+                return@withContext devicesList
+            } catch (e: Exception){
+                Log.e("DeviceRepository", "Error: DeviceRepository.getDevices()\n${e.message}")
+                return@withContext emptyList()
+            }
+        }
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    suspend fun getDevicesByIndexes(indexes: List<Long>): List<DeviceParameters>{
+        return withContext(Dispatchers.IO){
+            try {
+                val dbDevicesList = appDAO.getDevicesByIndexes(indexes)
+                val devicesList = mutableListOf<DeviceParameters>()
+                val adapter = moshi.adapter<Map<String, StageParams>>()
+                dbDevicesList.forEach { dbDevice ->
+                    val stages = adapter.fromJson(dbDevice.stages)
+                    stages?.let {
+                        devicesList.add(
+                            DeviceParameters(
+                                id = dbDevice.id,
+                                deviceType = dbDevice.type,
+                                deviceName = dbDevice.model,
+                                deviceImageURI = dbDevice.imagePath,
+                                stages = it
+                            )
+                        )
                     }
                 }
 

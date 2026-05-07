@@ -31,17 +31,21 @@ import androidx.navigation.compose.composable
 import com.example.swagaapp.AppViewModel
 import com.example.swagaapp.R
 import com.example.swagaapp.pages.AnalyzedImage
+import com.example.swagaapp.pages.ContentWithTopBar
 import com.example.swagaapp.pages.DeviceSetup
+import com.example.swagaapp.pages.DevicesPanels
 import com.example.swagaapp.pages.MetricsRecords
 import com.example.swagaapp.pages.Statistics
 import com.example.swagaapp.pages.camera.Camera
+import com.example.swagaapp.ui.theme.BarColor
 
 sealed class NavRoutes(val route: String){
     object Statistics: NavRoutes("statistics")
     object DeviceSetup: NavRoutes("deviceSetup")
     object Camera: NavRoutes("camera")
-    object MetricsRecords: NavRoutes("metricsRecords")
+    object DevicesPanels: NavRoutes("devicesPanels")
     object AnalyzedImage: NavRoutes("analyzedImage")
+    object MetricsRecords: NavRoutes("metricsRecords")
 }
 
 data class BarItem(
@@ -65,7 +69,7 @@ object NavBarItems {
         BarItem(
             title = "Записи",
             icon = R.drawable.settings,
-            route = NavRoutes.MetricsRecords.route
+            route = NavRoutes.DevicesPanels.route
         )
     )
 }
@@ -81,6 +85,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
     val toAnalyzedImage = { navController.navigate(NavRoutes.AnalyzedImage.route) }
     val toDeviceSetup = { navController.navigate(NavRoutes.DeviceSetup.route) }
     val toCamera = { navController.navigate(NavRoutes.Camera.route) }
+    val toMetricsRecords: (String) -> Unit = { navController.navigate(NavRoutes.MetricsRecords.route + "/$it") }
 
     NavHost(
         navController = navController,
@@ -97,7 +102,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
             }
         ){
             viewModel.showBottomNavBar.value = true
-            Statistics(viewModel)
+            Statistics(viewModel, scaffoldPaddingValues)
         }
         composable(
             NavRoutes.Camera.route,
@@ -117,7 +122,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
             )
         }
         composable(
-            NavRoutes.MetricsRecords.route,
+            NavRoutes.DevicesPanels.route,
             enterTransition = {
                 EnterTransition.None
             },
@@ -126,7 +131,9 @@ fun AppNavigation(modifier: Modifier = Modifier,
             }
         ){
             viewModel.showBottomNavBar.value = true
-            MetricsRecords(viewModel)
+            ContentWithTopBar("Записи", scaffoldPaddingValues) {
+                DevicesPanels(viewModel, scaffoldPaddingValues, toMetricsRecords)
+            }
         }
         composable(
             NavRoutes.AnalyzedImage.route,
@@ -144,6 +151,20 @@ fun AppNavigation(modifier: Modifier = Modifier,
             viewModel.showBottomNavBar.value = false
             DeviceSetup(viewModel, toCamera)
         }
+        composable(
+            NavRoutes.MetricsRecords.route + "/{deviceType}",
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){ stackEntry ->
+            val deviceType = stackEntry.arguments?.getString("deviceType")
+            ContentWithTopBar("Записи", scaffoldPaddingValues){
+                MetricsRecords(viewModel, deviceType)
+            }
+        }
     }
 }
 
@@ -152,13 +173,14 @@ fun AppNavigation(modifier: Modifier = Modifier,
 fun BottomNavigationBar(navController: NavHostController, selectedDestination: MutableState<String>){
     BoxWithConstraints() {
         val barWidth = maxWidth
-        var barHeight = maxHeight * 0.12f
+        val barHeight = maxHeight * 0.12f
 
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(barHeight)
                 .shadow(5.dp),
+            containerColor = BarColor
         ) {
             NavBarItems.BarItems.forEach { item ->
                 val isSelected = selectedDestination.value == item.route

@@ -4,40 +4,28 @@ import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.displayCutoutPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.UiComposable
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
-import com.example.swagaapp.AppViewModel
-import com.example.swagaapp.ocr.devices.DevicesNames
-import com.example.swagaapp.ocr.devices.Tonometer
 import com.example.swagaapp.ui.theme.BarColor
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
-fun Statistics(
-    viewModel: AppViewModel,
-    paddingValues: PaddingValues
-){
-    val descendingSort by remember { mutableStateOf(false) }
-    val sessions by viewModel.sessions.collectAsState()
-    val selectedType by remember {mutableStateOf("")}
-
+fun ContentWithTopBar(name: String, paddingValues: PaddingValues, content: @Composable (() -> Unit)){
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -47,7 +35,6 @@ fun Statistics(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .navigationBarsPadding()
                 .padding(bottom = paddingValues.calculateBottomPadding())
         ) {
             val topBarHeight = pageHeight * 0.1f
@@ -66,46 +53,14 @@ fun Statistics(
                     contentAlignment = Alignment.Center
                 ){
                     Text(
-                        "Статистика",
+                        name,
                         textAlign = TextAlign.Center,
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp
                     )
                 }
-
             }
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-            ){
-
-            }
+            content()
         }
     }
-//    LaunchedEffect(sessions) {
-//        viewModel.loadAllSessionsWithMetrics(descendingSort)
-//    }
-//
-//    BoxWithConstraints(
-//        modifier = Modifier.fillMaxSize()
-//    ) {
-//        Column(
-//            modifier = Modifier
-//                .verticalScroll(rememberScrollState())
-//        ){
-//            sessions.forEach { session ->
-//                Column(
-//                    modifier = Modifier
-//                        .border(1.dp, Color.Black)
-//                        .padding(5.dp)
-//                ){
-//                    session.metrics.forEach { metric ->
-//                        Text("${metric.key.metricCode}: ${metric.value}")
-//                    }
-//                }
-//            }
-//        }
-//
-//
-//    }
 }

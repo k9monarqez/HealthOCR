@@ -101,7 +101,7 @@ import coil.compose.AsyncImage
 import com.canhub.cropper.CropImageView
 import com.example.swagaapp.AppViewModel
 import com.example.swagaapp.R
-import com.example.swagaapp.ocr.cropImage
+import com.example.swagaapp.ocr.DeviceImageProcessing
 import org.opencv.android.Utils
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -171,7 +171,7 @@ fun Camera(
                 @OptIn(ExperimentalGetImage::class)
                 override fun onCaptureSuccess(imageProxy: ImageProxy) {
                     viewModel.setMat(
-                        cropImage(
+                        DeviceImageProcessing.cropImage(
                             imageProxy.image,
                             cropRectPosition,
                             Offset(previewView.width.toFloat(), previewView.height.toFloat())
@@ -267,8 +267,8 @@ fun Camera(
                             ) {
                                 if(showDeviceSelectors){
                                     val buttonHeight = topAreaHeight * 0.7f
-                                    val selectedDeviceBitmap = remember { mutableStateOf<Bitmap?>(null) }
                                     val selectedDevice by viewModel.selectedDevice.collectAsState()
+                                    val bitmaps by viewModel.bitmaps.collectAsState()
                                     val iconSize = buttonHeight
                                     Box(
                                         modifier = Modifier
@@ -285,16 +285,16 @@ fun Camera(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(15.dp, Alignment.Start)
                                         ){
-
-                                            LaunchedEffect(selectedDevice) {
-                                                selectedDevice?.let {
-                                                    viewModel.loadDeviceBitmap(it.deviceImageURI, selectedDeviceBitmap)
-                                                }
-                                            }
                                             if(selectedDevice != null){
+                                                val iconBitmap = if(selectedDevice != null){
+                                                    (bitmaps[selectedDevice!!.id]?.value ?: BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus))
+                                                        .asImageBitmap()
+                                                }
+                                                else{
+                                                    BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus).asImageBitmap()
+                                                }
                                                 Icon(
-                                                    bitmap = (selectedDeviceBitmap.value ?: BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus))
-                                                        .asImageBitmap(),
+                                                    bitmap = iconBitmap,
                                                     contentDescription = "Selected device",
                                                     tint = Color.Unspecified,
                                                     modifier = Modifier

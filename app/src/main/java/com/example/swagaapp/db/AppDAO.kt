@@ -11,7 +11,8 @@ import androidx.sqlite.db.SupportSQLiteQuery
 interface AppDAO {
     @Query(
         """
-        SELECT * FROM devices
+            SELECT *
+            FROM devices
         """
     )
     fun getDevices(): List<DBDevice>
@@ -40,4 +41,13 @@ interface AppDAO {
     @Transaction
     @RawQuery
     suspend fun getAllSessionsWithMetrics(query: SupportSQLiteQuery): List<SessionWithMetrics>
+
+    @Query(
+        """
+            SELECT *
+            FROM devices
+            WHERE type IN (:ids)
+        """
+    )
+    fun getDevicesByIndexes(ids: List<Long>): List<DBDevice>
 }

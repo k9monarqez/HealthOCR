@@ -11,7 +11,6 @@ import com.example.swagaapp.ocr.devices.Device
 import com.example.swagaapp.storage.repositories.DeviceParameters
 import com.example.swagaapp.storage.repositories.DeviceRepository
 import com.example.swagaapp.storage.Metrics
-import com.example.swagaapp.storage.repositories.MetricsRepository
 import com.example.swagaapp.storage.repositories.Session
 import com.example.swagaapp.storage.repositories.SessionRepository
 import kotlinx.coroutines.Dispatchers
@@ -49,10 +48,12 @@ class AppViewModel(
 
     private val deviceRepository: DeviceRepository
     private val sessionRepository: SessionRepository
-    private val metricsRepository: MetricsRepository
 
     private val _devices = MutableStateFlow<List<DeviceParameters>>(emptyList())
     val devices: StateFlow<List<DeviceParameters>> = _devices.asStateFlow()
+
+    private val _bitmaps = MutableStateFlow<MutableMap<Long, MutableState<Bitmap?>>>(mutableMapOf())
+    val bitmaps: StateFlow<Map<Long, MutableState<Bitmap?>>> = _bitmaps.asStateFlow()
 
     private val _selectedDevice = MutableStateFlow<DeviceParameters?>(null)
     val selectedDevice: StateFlow<DeviceParameters?> = _selectedDevice.asStateFlow()
@@ -69,18 +70,28 @@ class AppViewModel(
         val appDAO = db.getAppDAO()
         deviceRepository = DeviceRepository(application.applicationContext, appDAO)
         sessionRepository = SessionRepository(application.applicationContext, appDAO)
-        metricsRepository = MetricsRepository(application.applicationContext, appDAO)
 
         viewModelScope.launch(Dispatchers.IO) {
             _devices.value = deviceRepository.getDevices()
             _selectedDevice.value = if(!_devices.value.isEmpty()) _devices.value[0] else null
+            _devices.value.forEach { device ->
+                _bitmaps.value[device.id] = mutableStateOf(null)
+                _bitmaps.value[device.id]?.let{
+                    loadDeviceBitmap(device.deviceImageURI, it)
+                }
+            }
         }
     }
 
-    fun loadDevices(){
+    fun loadDevices(withDeleted: Boolean = false){
         viewModelScope.launch(Dispatchers.IO) {
-            _devices.value = deviceRepository.getDevices()
-            println(_devices.value.size)
+            _devices.value = deviceRepository.getDevices(withDeleted)
+            _devices.value.forEach { device ->
+                _bitmaps.value[device.id] = mutableStateOf(null)
+                _bitmaps.value[device.id]?.let{
+                    loadDeviceBitmap(device.deviceImageURI, it)
+                }
+            }
         }
     }
 
@@ -101,14 +112,14 @@ class AppViewModel(
         viewModelScope.launch(Dispatchers.IO){
             selectedDevice.value?.let { device ->
                 val sessionID = sessionRepository.addSession(sessionTime, device.id)
-                metricsRepository.addMetrics(metrics, sessionID)
+                sessionRepository.addMetrics(metrics, sessionID)
             }
         }
     }
 
-    fun loadAllSessionsWithMetrics(descendingSort: Boolean){
+    fun loadSessionsWithMetrics(type: String? = null, descendingSort: Boolean){
         viewModelScope.launch(Dispatchers.IO){
-            _sessions.value = sessionRepository.getAllSessionsWithMetrics(descendingSort)
+            _sessions.value = sessionRepository.getSessionsWithMetrics(type, descendingSort)
         }
     }
 }
