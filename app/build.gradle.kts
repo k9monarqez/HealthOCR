@@ -6,13 +6,13 @@ plugins {
 }
 
 android {
-    namespace = "com.example.swagaapp"
+    namespace = "com.example.healthocr"
     compileSdk {
         version = release(36)
     }
 
     defaultConfig {
-        applicationId = "com.example.swagaapp"
+        applicationId = "com.example.healthocr"
         minSdk = 30
         targetSdk = 36
         versionCode = 1
