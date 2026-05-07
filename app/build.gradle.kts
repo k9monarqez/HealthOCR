@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    kotlin("plugin.serialization") version "2.3.20"
+    id("com.google.devtools.ksp")
 }
 
 android {
@@ -57,6 +59,15 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.10.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.0")
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    implementation (libs.androidx.runtime.livedata)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    annotationProcessor(libs.androidx.room.room.compiler)
+    ksp(libs.androidx.room.room.compiler)
 
     val camerax_version = "1.2.2"
     implementation("androidx.camera:camera-core:${camerax_version}")
@@ -67,6 +78,9 @@ dependencies {
 
     implementation("cz.adaptech.tesseract4android:tesseract4android-openmp:4.9.0")
 
-    implementation("com.github.Tanish-Ranjan:crop-kit:1.1.0")
+    implementation("com.vanniktech:android-image-cropper:4.7.0")
 
+    implementation("com.squareup.moshi:moshi-adapters:1.15.2")
+    implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
+    ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
 }

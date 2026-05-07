@@ -1,33 +1,24 @@
 package com.example.swagaapp.nav
 
 import android.annotation.SuppressLint
-import android.gesture.GesturePoint
-import android.gesture.GestureUtils
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
@@ -37,18 +28,24 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.example.swagaapp.AppViewModel
 import com.example.swagaapp.R
-import com.example.swagaapp.pages.Camera
-import com.example.swagaapp.pages.Home
-import com.example.swagaapp.pages.Settings
-import java.util.concurrent.ExecutorService
+import com.example.swagaapp.pages.AnalyzedImage
+import com.example.swagaapp.pages.ContentWithTopBar
+import com.example.swagaapp.pages.DeviceSetup
+import com.example.swagaapp.pages.DevicesPanels
+import com.example.swagaapp.pages.MetricsRecords
+import com.example.swagaapp.pages.Statistics
+import com.example.swagaapp.pages.camera.Camera
+import com.example.swagaapp.ui.theme.BarColor
 
 sealed class NavRoutes(val route: String){
-    object Home: NavRoutes("home")
-//    object Camera: NavRoutes("camera")
-//    object Settings: NavRoutes("settings")
+    object Statistics: NavRoutes("statistics")
+    object DeviceSetup: NavRoutes("deviceSetup")
+    object Camera: NavRoutes("camera")
+    object DevicesPanels: NavRoutes("devicesPanels")
+    object AnalyzedImage: NavRoutes("analyzedImage")
+    object MetricsRecords: NavRoutes("metricsRecords")
 }
 
 data class BarItem(
@@ -60,43 +57,113 @@ data class BarItem(
 object NavBarItems {
     val BarItems = listOf(
         BarItem(
-            title = "Главный",
+            title = "Статистика",
             icon = R.drawable.home,
-            route = "home"
+            route = NavRoutes.Statistics.route
         ),
-//        BarItem(
-//            title = "Камера",
-//            icon = R.drawable.camera,
-//            route = "camera"
-//        ),
-//        BarItem(
-//            title = "Настройки",
-//            icon = R.drawable.settings,
-//            route = "settings"
-//        )
+        BarItem(
+            title = "Камера",
+            icon = R.drawable.camera,
+            route = NavRoutes.Camera.route
+        ),
+        BarItem(
+            title = "Записи",
+            icon = R.drawable.settings,
+            route = NavRoutes.DevicesPanels.route
+        )
     )
 }
 
 @Composable
 fun AppNavigation(modifier: Modifier = Modifier,
                   navController: NavHostController,
-                  startDestination: String = NavRoutes.Home.route,
-                  viewModel: AppViewModel
+                  startDestination: String = NavRoutes.Camera.route,
+                  viewModel: AppViewModel,
+                  scaffoldPaddingValues: PaddingValues
 )
 {
+    val toAnalyzedImage = { navController.navigate(NavRoutes.AnalyzedImage.route) }
+    val toDeviceSetup = { navController.navigate(NavRoutes.DeviceSetup.route) }
+    val toCamera = { navController.navigate(NavRoutes.Camera.route) }
+    val toMetricsRecords: (String) -> Unit = { navController.navigate(NavRoutes.MetricsRecords.route + "/$it") }
+
     NavHost(
         navController = navController,
         startDestination = startDestination,
-        modifier = modifier,
-        enterTransition = {
-            EnterTransition.None
-        },
-        exitTransition = {
-            ExitTransition.None
-        }
+        modifier = modifier
     ){
-        composable(NavRoutes.Home.route){
-            Camera(viewModel)
+        composable(
+            NavRoutes.Statistics.route,
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){
+            viewModel.showBottomNavBar.value = true
+            Statistics(viewModel, scaffoldPaddingValues)
+        }
+        composable(
+            NavRoutes.Camera.route,
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){
+            viewModel.showBottomNavBar.value = true
+            Camera(
+                viewModel,
+                toAnalyzedImage,
+                toDeviceSetup,
+                true
+            )
+        }
+        composable(
+            NavRoutes.DevicesPanels.route,
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){
+            viewModel.showBottomNavBar.value = true
+            ContentWithTopBar("Записи", scaffoldPaddingValues) {
+                DevicesPanels(viewModel, scaffoldPaddingValues, toMetricsRecords)
+            }
+        }
+        composable(
+            NavRoutes.AnalyzedImage.route,
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ) {
+            viewModel.showBottomNavBar.value = false
+            AnalyzedImage(viewModel)
+        }
+        composable(NavRoutes.DeviceSetup.route){
+            viewModel.showBottomNavBar.value = false
+            DeviceSetup(viewModel, toCamera)
+        }
+        composable(
+            NavRoutes.MetricsRecords.route + "/{deviceType}",
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){ stackEntry ->
+            val deviceType = stackEntry.arguments?.getString("deviceType")
+            ContentWithTopBar("Записи", scaffoldPaddingValues){
+                MetricsRecords(viewModel, deviceType)
+            }
         }
     }
 }
@@ -106,20 +173,21 @@ fun AppNavigation(modifier: Modifier = Modifier,
 fun BottomNavigationBar(navController: NavHostController, selectedDestination: MutableState<String>){
     BoxWithConstraints() {
         val barWidth = maxWidth
-        var barHeight = maxHeight * 0.12f
+        val barHeight = maxHeight * 0.12f
 
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(barHeight)
                 .shadow(5.dp),
+            containerColor = BarColor
         ) {
             NavBarItems.BarItems.forEach { item ->
                 val isSelected = selectedDestination.value == item.route
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .pointerInput(Unit){
+                        .pointerInput(Unit) {
                             detectTapGestures(
                                 onTap = {
                                     navController.navigate(item.route)
