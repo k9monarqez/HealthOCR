@@ -1,10 +1,12 @@
 package com.example.healthocr.db
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.RawQuery
 import androidx.room.Transaction
+import androidx.room.Update
 import androidx.sqlite.db.SupportSQLiteQuery
 
 @Dao
@@ -29,6 +31,18 @@ interface AppDAO {
     )
     fun deleteDevice(deviceID: Long)
 
+    @Query(
+        """
+            SELECT *
+            FROM sessions
+            WHERE id = :id
+        """
+    )
+    fun getSession(id: Long): SessionWithMetrics
+
+    @Delete
+    fun deleteSessions(ids: List<SessionInfo>)
+
     @Insert
     fun addSession(session: SessionInfo): Long
 
@@ -42,12 +56,12 @@ interface AppDAO {
     @RawQuery
     suspend fun getAllSessionsWithMetrics(query: SupportSQLiteQuery): List<SessionWithMetrics>
 
-    @Query(
-        """
-            SELECT *
-            FROM devices
-            WHERE type IN (:ids)
-        """
-    )
-    fun getDevicesByIndexes(ids: List<Long>): List<DBDevice>
+    @Update
+    fun updateSession(sessionInfo: SessionInfo)
+
+    @Update
+    fun updateNumericMetrics(numericMetrics: List<NumericMetric>)
+
+    @Update
+    fun updateStringMetrics(stringMetrics: List<StringMetric>)
 }

@@ -51,6 +51,7 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(project(":OpenCV"))
     implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.compose.foundation.layout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -15,7 +15,8 @@ import androidx.room.Relation
         ForeignKey(
             entity = SessionInfo::class,
             parentColumns = ["id"],
-            childColumns = ["session_id"]
+            childColumns = ["session_id"],
+            onDelete = ForeignKey.CASCADE
         )
     ]
 )
@@ -33,7 +34,8 @@ data class NumericMetric(
         ForeignKey(
             entity = SessionInfo::class,
             parentColumns = ["id"],
-            childColumns = ["session_id"]
+            childColumns = ["session_id"],
+            onDelete = ForeignKey.CASCADE
         )
     ]
 )
@@ -71,7 +73,8 @@ data class DBDevice(
 data class SessionInfo(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "device_id") val deviceID: Long,
-    val timestamp: Long
+    val created: Long,
+    val updated: Long? = null
 )
 
 data class SessionWithMetrics(

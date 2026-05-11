@@ -35,7 +35,11 @@ object DeviceImageProcessing {
         Imgproc.morphologyEx(thresh, thresh, Imgproc.MORPH_OPEN, kernel)
 
         val matArea = thresh.height() * thresh.width()
-        val boxes = findContoursRectangles(thresh, matArea * minDisplaySize..matArea * 1.0, Mat())
+        val areaSizeRule = {cnt: MatOfPoint ->
+            val area = Imgproc.contourArea(cnt)
+            area in matArea * minDisplaySize..matArea * 1.0
+        }
+        val boxes = findContoursRectangles(thresh, areaSizeRule, Mat())
 
         val displayBox = boxes.minByOrNull { box ->
             Imgproc.contourArea(box)
@@ -72,8 +76,11 @@ object DeviceImageProcessing {
         Imgproc.erode(displayMat, displayMat, kernel)
 
         val matArea = displayMat.height() * displayMat.width()
-        println(displayMat.size())
-        val boxes = findContoursRectangles(displayMat, matArea * digitsSizeRange.start ..matArea * digitsSizeRange.endInclusive, Mat())
+        val areaSizeRule = {cnt: MatOfPoint ->
+            val area = Imgproc.contourArea(cnt)
+            area in matArea * digitsSizeRange.start ..matArea * digitsSizeRange.endInclusive
+        }
+        val boxes = findContoursRectangles(displayMat, areaSizeRule, Mat())
         val digitsMat = Mat(displayMat.height(), displayMat.width(), displayMat.type()).setTo(Scalar(255.0))
 
         for(box in boxes){
@@ -119,13 +126,12 @@ object DeviceImageProcessing {
         return ""
     }
 
-    private fun findContoursRectangles(mat: Mat, sizeRange: ClosedRange<Double>, hierarchy: Mat = Mat()): List<MatOfPoint>{
+    private fun findContoursRectangles(mat: Mat, areaSizeRule: (MatOfPoint) -> Boolean, hierarchy: Mat = Mat()): List<MatOfPoint>{
         val contours = mutableListOf<MatOfPoint>()
         Imgproc.findContours(mat, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE)
         val boxes = mutableListOf<MatOfPoint>()
         for(cnt in contours){
-            val area = Imgproc.contourArea(cnt)
-            if(area !in sizeRange) continue
+            if(!areaSizeRule(cnt)) continue
 
             val rect = Imgproc.minAreaRect(MatOfPoint2f(*cnt.toArray()))
             val box = Array(4) { Point() }

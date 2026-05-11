@@ -13,17 +13,39 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 data class Session(
-    val session: SessionInfo,
-    val metrics: Map<Metrics, String>
+    val sessionInfo: SessionInfo,
+    val metrics: Map<Metrics, String>,
+    val metricsID: List<Long>
 )
 
 class SessionRepository(private val context: Context, private val appDAO: AppDAO) {
+    suspend fun getSession(id: Long): Session{
+        return withContext(Dispatchers.IO) {
+            val rawSession = appDAO.getSession(id)
+            val mappedMetrics = mutableMapOf<Metrics, String>()
+            val metricsID: MutableList<Long> = mutableListOf()
+            rawSession.numericMetrics.forEach {
+                mappedMetrics[Metrics.getTypeByMetricCode(it.type)] = it.value.toString()
+                metricsID.add(it.id)
+            }
+            rawSession.stringMetrics.forEach {
+                mappedMetrics[Metrics.getTypeByMetricCode(it.type)] = it.value
+                metricsID.add(it.id)
+            }
+
+            return@withContext Session(
+                sessionInfo = rawSession.session,
+                mappedMetrics,
+                metricsID
+            )
+        }
+    }
     suspend fun addSession(time: LocalDateTime, deviceID: Long): Long {
         return withContext(Dispatchers.IO) {
             appDAO.addSession(
                 SessionInfo(
                     id = 0,
-                    timestamp = time.toEpochSecond(ZoneOffset.UTC),
+                    created = time.toEpochSecond(ZoneOffset.UTC),
                     deviceID = deviceID
                 )
             )
@@ -41,7 +63,7 @@ class SessionRepository(private val context: Context, private val appDAO: AppDAO
                     FROM sessions s 
                     JOIN devices d ON s.device_id = d.id
                     WHERE d.type = '$type'
-                    ORDER BY timestamp $sortingOrder
+                    ORDER BY created $sortingOrder
                 """
                 )
             }
@@ -50,7 +72,7 @@ class SessionRepository(private val context: Context, private val appDAO: AppDAO
                     """
                         SELECT * 
                         FROM sessions 
-                        ORDER BY timestamp $sortingOrder
+                        ORDER BY created $sortingOrder
                 """
                 )
             }
@@ -60,17 +82,21 @@ class SessionRepository(private val context: Context, private val appDAO: AppDAO
 
             rawSessions.forEach { dbSession ->
                 val mappedMetrics = mutableMapOf<Metrics, String>()
+                val metricsID: MutableList<Long> = mutableListOf()
                 dbSession.numericMetrics.forEach {
                     mappedMetrics[Metrics.getTypeByMetricCode(it.type)] = it.value.toString()
+                    metricsID.add(it.id)
                 }
                 dbSession.stringMetrics.forEach {
                     mappedMetrics[Metrics.getTypeByMetricCode(it.type)] = it.value
+                    metricsID.add(it.id)
                 }
 
                 sessions.add(
                     Session(
-                        session = dbSession.session,
-                        metrics = mappedMetrics
+                        sessionInfo = dbSession.session,
+                        metrics = mappedMetrics,
+                        metricsID = metricsID
                     )
                 )
             }
@@ -111,6 +137,52 @@ class SessionRepository(private val context: Context, private val appDAO: AppDAO
 
             appDAO.addNumericMetrics(numericMetrics)
             appDAO.addStringMetrics(stringMetrics)
+        }
+    }
+
+    suspend fun deleteSessions(sessions: List<SessionInfo>){
+        withContext(Dispatchers.IO){
+            appDAO.deleteSessions(sessions)
+        }
+    }
+    
+    suspend fun updateSessionWithMetrics(session: Session){
+        withContext(Dispatchers.IO){
+            val sessionInfo = session.sessionInfo
+            val metricsMap = session.metrics
+            val metricsID = session.metricsID
+
+            val numericMetrics: MutableList<NumericMetric> = mutableListOf()
+            val stringMetrics: MutableList<StringMetric> = mutableListOf()
+            
+            metricsMap.toList().forEachIndexed { i, pair ->
+                val metricType = pair.first
+                val value = pair.second
+                if(metricType.isNumeric){
+                    numericMetrics.add(
+                        NumericMetric(
+                            id = metricsID[i],
+                            type = metricType.metricCode,
+                            value = value.toLong(),
+                            sessionID = sessionInfo.id
+                        )
+                    )
+                }
+                else{
+                    stringMetrics.add(
+                        StringMetric(
+                            id = metricsID[i],
+                            type = metricType.metricCode,
+                            value = value,
+                            sessionID = sessionInfo.id
+                        )
+                    )
+                }
+            }
+
+            appDAO.updateSession(sessionInfo)
+            appDAO.updateNumericMetrics(numericMetrics)
+            appDAO.updateStringMetrics(stringMetrics)
         }
     }
 }

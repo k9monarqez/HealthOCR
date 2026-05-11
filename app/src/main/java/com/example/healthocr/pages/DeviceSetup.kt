@@ -56,7 +56,6 @@ import org.opencv.core.Rect
 import java.io.File
 import kotlin.math.min
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun DeviceSetup(viewModel: AppViewModel, toCamera: () -> Unit){
     val context = LocalContext.current
