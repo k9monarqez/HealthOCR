@@ -3,10 +3,13 @@ package com.example.healthocr
 import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthocr.db.AppRoomDatabase
+import com.example.healthocr.db.SessionInfo
 import com.example.healthocr.ocr.devices.Device
 import com.example.healthocr.storage.repositories.DeviceParameters
 import com.example.healthocr.storage.repositories.DeviceRepository
@@ -28,6 +31,17 @@ class AppViewModel(
 ): AndroidViewModel(application) {
     val showBottomNavBar = mutableStateOf(false)
     var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+
+    private val _darkBackground = MutableStateFlow(false)
+    var darkBackground: StateFlow<Boolean> = _darkBackground.asStateFlow()
+
+    fun showDarkBG(){
+        _darkBackground.value = true
+    }
+
+    fun hideDarkBG(){
+        _darkBackground.value = false
+    }
 
     override fun onCleared() {
         super.onCleared()
@@ -55,11 +69,30 @@ class AppViewModel(
     private val _bitmaps = MutableStateFlow<MutableMap<Long, MutableState<Bitmap?>>>(mutableMapOf())
     val bitmaps: StateFlow<Map<Long, MutableState<Bitmap?>>> = _bitmaps.asStateFlow()
 
+    private val _selectedDeviceType = MutableStateFlow<String?>(null)
+    val selectedDeviceType: StateFlow<String?> = _selectedDeviceType.asStateFlow()
+
+    fun setSelectedDeviceType(deviceType: String){
+        _selectedDeviceType.value = deviceType
+    }
+
     private val _selectedDevice = MutableStateFlow<DeviceParameters?>(null)
     val selectedDevice: StateFlow<DeviceParameters?> = _selectedDevice.asStateFlow()
 
     private val _sessions = MutableStateFlow<List<Session>>(emptyList())
     val sessions: StateFlow<List<Session>> = _sessions.asStateFlow()
+
+    private val _selectedSession = MutableStateFlow<Session?>(null)
+    val selectedSession: StateFlow<Session?> = _selectedSession.asStateFlow()
+
+    private val _selectedSessionsMask = MutableStateFlow(mutableStateListOf<Boolean>())
+    val selectedSessionsMask: StateFlow<SnapshotStateList<Boolean>> = _selectedSessionsMask.asStateFlow()
+
+    fun loadSession(sessionID: Long){
+        viewModelScope.launch(Dispatchers.IO) {
+            _selectedSession.value = sessionRepository.getSession(sessionID)
+        }
+    }
 
     fun setSelectedDevice(device: DeviceParameters){
         _selectedDevice.value = device
@@ -117,9 +150,33 @@ class AppViewModel(
         }
     }
 
-    fun loadSessionsWithMetrics(type: String? = null, descendingSort: Boolean){
+    fun loadSessionsWithMetrics(type: String? = null){
         viewModelScope.launch(Dispatchers.IO){
-            _sessions.value = sessionRepository.getSessionsWithMetrics(type, descendingSort)
+            _sessions.value = sessionRepository.getSessionsWithMetrics(type, _sortDescending.value)
+            _selectedSessionsMask.value.clear()
+            _selectedSessionsMask.value.apply {
+                repeat(_sessions.value.size){ add(false) }
+            }
         }
+    }
+
+    fun deleteSessions(sessions: List<SessionInfo>){
+        viewModelScope.launch(Dispatchers.IO){
+            sessionRepository.deleteSessions(sessions)
+            loadSessionsWithMetrics(_selectedDeviceType.value)
+        }
+    }
+
+    fun updateSessionWithMetrics(session: Session){
+        viewModelScope.launch(Dispatchers.IO){
+            sessionRepository.updateSessionWithMetrics(session)
+        }
+    }
+
+    private val _sortDescending = MutableStateFlow(true)
+    val sortDescending: StateFlow<Boolean> = _sortDescending.asStateFlow()
+
+    fun flipSortingOrder(){
+        _sortDescending.value = !_sortDescending.value
     }
 }

@@ -107,7 +107,6 @@ import kotlin.math.roundToInt
 import org.opencv.core.Rect
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun Camera(
     viewModel: AppViewModel,
@@ -556,7 +555,6 @@ enum class CropRectMode {
     MIRROR
 }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun CropRect(
     modifier: Modifier = Modifier,
@@ -707,7 +705,7 @@ fun CropRect(
 
         }
 
-        BoxWithConstraints(
+        Box(
             modifier = modifier
                 then(
                     if(mode == CropRectMode.FREE){
@@ -763,7 +761,6 @@ fun CropRect(
 
 }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun CaptureButton(
     modifier: Modifier = Modifier,

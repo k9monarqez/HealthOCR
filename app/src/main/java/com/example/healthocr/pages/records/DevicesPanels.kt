@@ -1,6 +1,5 @@
-package com.example.healthocr.pages
+package com.example.healthocr.pages.records
 
-import android.annotation.SuppressLint
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -39,13 +38,28 @@ import com.example.healthocr.ui.theme.BarColor
 import kotlin.collections.chunked
 import kotlin.collections.forEach
 
-data class DevicePanelData(
+sealed class DevicePanelData(
     val type: DevicesNames,
     val text: String,
     val imgURI: String
-)
+) {
+    object TonometerPanel: DevicePanelData(
+        type = DevicesNames.Tonometer,
+        text = "Тонометр",
+        imgURI = ""
+    )
+    object CoagulometerPanel: DevicePanelData(
+        type = DevicesNames.Coagulometer,
+        text = "Коагулометр",
+        imgURI = ""
+    )
+    object PulseOxymeterPanel: DevicePanelData(
+        type = DevicesNames.PulseOxymeter,
+        text = "Пульсоксиметр",
+        imgURI = ""
+    )
+}
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun DevicesPanels(
     viewModel: AppViewModel,
@@ -53,21 +67,9 @@ fun DevicesPanels(
     toMetricsRecords: (String) -> Unit
 ){
     val options = listOf(
-        DevicePanelData(
-            type = DevicesNames.Tonometer,
-            text = "Тонометр",
-            imgURI = ""
-        ),
-        DevicePanelData(
-            type = DevicesNames.Coagulometer,
-            text = "Коагулометр",
-            imgURI = ""
-        ),
-        DevicePanelData(
-            type = DevicesNames.PulseOxymeter,
-            text = "Пульсоксиметр",
-            imgURI = ""
-        )
+        DevicePanelData.TonometerPanel,
+        DevicePanelData.CoagulometerPanel,
+        DevicePanelData.PulseOxymeterPanel
     )
 
     Column(
@@ -102,7 +104,6 @@ fun DevicesPanels(
     }
 }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun DevicePanel(modifier: Modifier = Modifier, devicePanelData: DevicePanelData, toMetricsRecords: (String) -> Unit){
     val isPressed = remember { mutableStateOf(false) }
@@ -114,7 +115,7 @@ fun DevicePanel(modifier: Modifier = Modifier, devicePanelData: DevicePanelData,
         )
     )
 
-    BoxWithConstraints(
+    Box(
         modifier = modifier
             .scale(scale)
             .clip(RoundedCornerShape(10))
@@ -126,7 +127,7 @@ fun DevicePanel(modifier: Modifier = Modifier, devicePanelData: DevicePanelData,
                         isPressed.value = false
                     },
                     onTap = {
-                        toMetricsRecords(devicePanelData.type.toString())
+                        toMetricsRecords(devicePanelData.type.name)
                     }
 
                 )

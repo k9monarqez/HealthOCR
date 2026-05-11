@@ -1,6 +1,5 @@
 package com.example.healthocr.nav
 
-import android.annotation.SuppressLint
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -16,7 +15,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -26,17 +28,22 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.navArgument
 import com.example.healthocr.AppViewModel
 import com.example.healthocr.R
+import com.example.healthocr.ocr.devices.DevicesNames
 import com.example.healthocr.pages.AnalyzedImage
 import com.example.healthocr.pages.ContentWithTopBar
 import com.example.healthocr.pages.DeviceSetup
-import com.example.healthocr.pages.DevicesPanels
-import com.example.healthocr.pages.MetricsRecords
+import com.example.healthocr.pages.records.DevicesPanels
+import com.example.healthocr.pages.records.MetricsRecordsList
 import com.example.healthocr.pages.Statistics
 import com.example.healthocr.pages.camera.Camera
+import com.example.healthocr.pages.records.Record
 import com.example.healthocr.ui.theme.BarColor
 
 sealed class NavRoutes(val route: String){
@@ -45,7 +52,8 @@ sealed class NavRoutes(val route: String){
     object Camera: NavRoutes("camera")
     object DevicesPanels: NavRoutes("devicesPanels")
     object AnalyzedImage: NavRoutes("analyzedImage")
-    object MetricsRecords: NavRoutes("metricsRecords")
+    object MetricsRecordsList: NavRoutes("metricsRecords")
+    object Record: NavRoutes("record")
 }
 
 data class BarItem(
@@ -85,7 +93,14 @@ fun AppNavigation(modifier: Modifier = Modifier,
     val toAnalyzedImage = { navController.navigate(NavRoutes.AnalyzedImage.route) }
     val toDeviceSetup = { navController.navigate(NavRoutes.DeviceSetup.route) }
     val toCamera = { navController.navigate(NavRoutes.Camera.route) }
-    val toMetricsRecords: (String) -> Unit = { navController.navigate(NavRoutes.MetricsRecords.route + "/$it") }
+    val toMetricsRecords: (String) -> Unit = { navController.navigate(NavRoutes.MetricsRecordsList.route + "/$it") }
+    val toRecord: (Long) -> Unit = { navController.navigate(NavRoutes.Record.route + "/$it") }
+
+    val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+
+    LaunchedEffect(currentRoute) {
+        viewModel.hideDarkBG()
+    }
 
     NavHost(
         navController = navController,
@@ -101,8 +116,12 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 ExitTransition.None
             }
         ){
-            viewModel.showBottomNavBar.value = true
-            Statistics(viewModel, scaffoldPaddingValues)
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = true
+            }
+            ContentWithTopBar(viewModel, "Статистика", scaffoldPaddingValues) {
+                Statistics(viewModel, scaffoldPaddingValues)
+            }
         }
         composable(
             NavRoutes.Camera.route,
@@ -113,7 +132,9 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 ExitTransition.None
             }
         ){
-            viewModel.showBottomNavBar.value = true
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = true
+            }
             Camera(
                 viewModel,
                 toAnalyzedImage,
@@ -130,8 +151,10 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 ExitTransition.None
             }
         ){
-            viewModel.showBottomNavBar.value = true
-            ContentWithTopBar("Записи", scaffoldPaddingValues) {
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = true
+            }
+            ContentWithTopBar(viewModel, "Записи", scaffoldPaddingValues) {
                 DevicesPanels(viewModel, scaffoldPaddingValues, toMetricsRecords)
             }
         }
@@ -144,15 +167,19 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 ExitTransition.None
             }
         ) {
-            viewModel.showBottomNavBar.value = false
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = false
+            }
             AnalyzedImage(viewModel)
         }
         composable(NavRoutes.DeviceSetup.route){
-            viewModel.showBottomNavBar.value = false
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = false
+            }
             DeviceSetup(viewModel, toCamera)
         }
         composable(
-            NavRoutes.MetricsRecords.route + "/{deviceType}",
+            NavRoutes.MetricsRecordsList.route + "/{deviceType}",
             enterTransition = {
                 EnterTransition.None
             },
@@ -160,15 +187,29 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 ExitTransition.None
             }
         ){ stackEntry ->
-            val deviceType = stackEntry.arguments?.getString("deviceType")
-            ContentWithTopBar("Записи", scaffoldPaddingValues){
-                MetricsRecords(viewModel, deviceType)
+            val deviceType = stackEntry.arguments?.getString("deviceType") ?: "Unknown"
+            ContentWithTopBar(viewModel, DevicesNames.valueOf(deviceType).ru, scaffoldPaddingValues, toPrevious = { navController.popBackStack() }, enableSorting = true){
+                MetricsRecordsList(viewModel, deviceType, toRecord)
+            }
+        }
+        composable(
+            NavRoutes.Record.route + "/{sessionID}",
+            arguments = listOf(navArgument("sessionID") { type = NavType.LongType }),
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){ stackEntry ->
+            val sessionID = stackEntry.arguments?.getLong("sessionID") ?: -1L
+            ContentWithTopBar(viewModel, "Запись", scaffoldPaddingValues, toPrevious = { navController.popBackStack() }){
+                Record(viewModel, sessionID)
             }
         }
     }
 }
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun BottomNavigationBar(navController: NavHostController, selectedDestination: MutableState<String>){
     BoxWithConstraints() {

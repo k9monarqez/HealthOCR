@@ -48,7 +48,6 @@ import com.example.healthocr.ocr.devices.toDeviceClass
 import com.example.healthocr.storage.Metrics
 import java.io.File
 
-@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun AnalyzedImage(viewModel: AppViewModel) {
     val context = LocalContext.current

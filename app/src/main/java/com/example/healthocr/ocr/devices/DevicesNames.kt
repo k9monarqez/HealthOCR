@@ -2,8 +2,12 @@ package com.example.healthocr.ocr.devices
 
 import com.example.healthocr.storage.repositories.DeviceParameters
 
-enum class DevicesNames{
-    Tonometer, BloodAnalyzer, UrineAnalyzer, Coagulometer, PulseOxymeter
+enum class DevicesNames(val ru: String){
+    Tonometer(ru = "Тонометр"),
+    BloodAnalyzer(ru = "Анализатор крови"),
+    UrineAnalyzer(ru = "Анализатор мочи"),
+    Coagulometer(ru = "Коагулометр"),
+    PulseOxymeter(ru = "Пульсоксиметр")
 }
 
 fun toDeviceClass(deviceParameters: DeviceParameters): Device?{

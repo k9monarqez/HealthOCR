@@ -64,36 +64,6 @@ class DeviceRepository(private val context: Context, private val appDAO: AppDAO)
     }
 
     @OptIn(ExperimentalStdlibApi::class)
-    suspend fun getDevicesByIndexes(indexes: List<Long>): List<DeviceParameters>{
-        return withContext(Dispatchers.IO){
-            try {
-                val dbDevicesList = appDAO.getDevicesByIndexes(indexes)
-                val devicesList = mutableListOf<DeviceParameters>()
-                val adapter = moshi.adapter<Map<String, StageParams>>()
-                dbDevicesList.forEach { dbDevice ->
-                    val stages = adapter.fromJson(dbDevice.stages)
-                    stages?.let {
-                        devicesList.add(
-                            DeviceParameters(
-                                id = dbDevice.id,
-                                deviceType = dbDevice.type,
-                                deviceName = dbDevice.model,
-                                deviceImageURI = dbDevice.imagePath,
-                                stages = it
-                            )
-                        )
-                    }
-                }
-
-                return@withContext devicesList
-            } catch (e: Exception){
-                Log.e("DeviceRepository", "Error: DeviceRepository.getDevices()\n${e.message}")
-                return@withContext emptyList()
-            }
-        }
-    }
-
-    @OptIn(ExperimentalStdlibApi::class)
     suspend fun addDevice(device: Device, deviceName: String, deviceBitmap: Bitmap){
         withContext(Dispatchers.IO){
             val stagesParamsMap = device.pipeline.associateBy(
