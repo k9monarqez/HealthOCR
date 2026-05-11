@@ -94,7 +94,7 @@ fun Statistics(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ){
             chartsMetadata.forEach { chart ->
-                ChartPreview(viewModel, chart, Modifier.height(pageHeight * 0.15f))
+                //ChartPreview(viewModel, chart, Modifier.height(pageHeight * 0.15f))
             }
         }
     }

@@ -17,8 +17,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -39,21 +37,19 @@ import com.example.healthocr.ocr.devices.DevicesNames
 import com.example.healthocr.pages.AnalyzedImage
 import com.example.healthocr.pages.ContentWithTopBar
 import com.example.healthocr.pages.DeviceSetup
-import com.example.healthocr.pages.records.DevicesPanels
-import com.example.healthocr.pages.records.MetricsRecordsList
 import com.example.healthocr.pages.Statistics
 import com.example.healthocr.pages.camera.Camera
-import com.example.healthocr.pages.records.Record
+import com.example.healthocr.pages.sessionHistory.SessionPage
+import com.example.healthocr.pages.sessionHistory.SessionsList
 import com.example.healthocr.ui.theme.BarColor
 
 sealed class NavRoutes(val route: String){
     object Statistics: NavRoutes("statistics")
     object DeviceSetup: NavRoutes("deviceSetup")
     object Camera: NavRoutes("camera")
-    object DevicesPanels: NavRoutes("devicesPanels")
     object AnalyzedImage: NavRoutes("analyzedImage")
-    object MetricsRecordsList: NavRoutes("metricsRecords")
-    object Record: NavRoutes("record")
+    object SessionsList: NavRoutes("sessionsList")
+    object SessionPage: NavRoutes("sessionPage")
 }
 
 data class BarItem(
@@ -75,9 +71,9 @@ object NavBarItems {
             route = NavRoutes.Camera.route
         ),
         BarItem(
-            title = "Записи",
+            title = "Сессии",
             icon = R.drawable.settings,
-            route = NavRoutes.DevicesPanels.route
+            route = NavRoutes.SessionsList.route
         )
     )
 }
@@ -93,8 +89,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
     val toAnalyzedImage = { navController.navigate(NavRoutes.AnalyzedImage.route) }
     val toDeviceSetup = { navController.navigate(NavRoutes.DeviceSetup.route) }
     val toCamera = { navController.navigate(NavRoutes.Camera.route) }
-    val toMetricsRecords: (String) -> Unit = { navController.navigate(NavRoutes.MetricsRecordsList.route + "/$it") }
-    val toRecord: (Long) -> Unit = { navController.navigate(NavRoutes.Record.route + "/$it") }
+    val toSession: (Long) -> Unit = { navController.navigate(NavRoutes.SessionPage.route + "/$it") }
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
@@ -143,22 +138,6 @@ fun AppNavigation(modifier: Modifier = Modifier,
             )
         }
         composable(
-            NavRoutes.DevicesPanels.route,
-            enterTransition = {
-                EnterTransition.None
-            },
-            exitTransition = {
-                ExitTransition.None
-            }
-        ){
-            LaunchedEffect(Unit) {
-                viewModel.showBottomNavBar.value = true
-            }
-            ContentWithTopBar(viewModel, "Записи", scaffoldPaddingValues) {
-                DevicesPanels(viewModel, scaffoldPaddingValues, toMetricsRecords)
-            }
-        }
-        composable(
             NavRoutes.AnalyzedImage.route,
             enterTransition = {
                 EnterTransition.None
@@ -179,21 +158,20 @@ fun AppNavigation(modifier: Modifier = Modifier,
             DeviceSetup(viewModel, toCamera)
         }
         composable(
-            NavRoutes.MetricsRecordsList.route + "/{deviceType}",
+            NavRoutes.SessionsList.route,
             enterTransition = {
                 EnterTransition.None
             },
             exitTransition = {
                 ExitTransition.None
             }
-        ){ stackEntry ->
-            val deviceType = stackEntry.arguments?.getString("deviceType") ?: "Unknown"
-            ContentWithTopBar(viewModel, DevicesNames.valueOf(deviceType).ru, scaffoldPaddingValues, toPrevious = { navController.popBackStack() }, enableSorting = true){
-                MetricsRecordsList(viewModel, deviceType, toRecord)
+        ){
+            ContentWithTopBar(viewModel, "Сессии", scaffoldPaddingValues, toPrevious = { navController.popBackStack() }, enableSorting = true){
+                SessionsList(viewModel, toSession)
             }
         }
         composable(
-            NavRoutes.Record.route + "/{sessionID}",
+            NavRoutes.SessionPage.route + "/{sessionID}",
             arguments = listOf(navArgument("sessionID") { type = NavType.LongType }),
             enterTransition = {
                 EnterTransition.None
@@ -204,7 +182,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
         ){ stackEntry ->
             val sessionID = stackEntry.arguments?.getLong("sessionID") ?: -1L
             ContentWithTopBar(viewModel, "Запись", scaffoldPaddingValues, toPrevious = { navController.popBackStack() }){
-                Record(viewModel, sessionID)
+                SessionPage(viewModel, sessionID)
             }
         }
     }

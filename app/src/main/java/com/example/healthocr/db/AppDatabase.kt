@@ -8,8 +8,7 @@ import androidx.room.RoomDatabase
 @Database(
     version = 1,
     entities = [
-        NumericMetric::class,
-        StringMetric::class,
+        Metric::class,
         DBDevice::class,
         SessionInfo::class
     ]

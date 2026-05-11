@@ -38,30 +38,31 @@ interface AppDAO {
             WHERE id = :id
         """
     )
-    fun getSession(id: Long): SessionWithMetrics
-
-    @Delete
-    fun deleteSessions(ids: List<SessionInfo>)
+    fun getSessionWithMetrics(id: Long): SessionWithMetrics
 
     @Insert
     fun addSession(session: SessionInfo): Long
 
-    @Insert
-    fun addNumericMetrics(metrics: List<NumericMetric>)
-
-    @Insert
-    fun addStringMetrics(metrics: List<StringMetric>)
+    @Delete
+    fun deleteSessions(ids: List<SessionInfo>)
 
     @Transaction
     @RawQuery
-    suspend fun getAllSessionsWithMetrics(query: SupportSQLiteQuery): List<SessionWithMetrics>
+    suspend fun getMetrics(query: SupportSQLiteQuery): List<Metric>
+
+    @Insert
+    fun addMetric(metric: Metric)
+
+    @Insert
+    fun addMetrics(metrics: List<Metric>)
+
+    @Update
+    fun updateMetrics(metrics: List<Metric>)
+
+    @Transaction
+    @RawQuery
+    suspend fun getAllSessions(query: SupportSQLiteQuery): List<SessionWithMetrics>
 
     @Update
     fun updateSession(sessionInfo: SessionInfo)
-
-    @Update
-    fun updateNumericMetrics(numericMetrics: List<NumericMetric>)
-
-    @Update
-    fun updateStringMetrics(stringMetrics: List<StringMetric>)
 }
