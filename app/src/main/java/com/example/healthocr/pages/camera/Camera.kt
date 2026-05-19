@@ -204,11 +204,11 @@ fun Camera(
 
         if(imgBitmap == null){
             if(bmp == null) {
-//                AndroidView(
-//                    factory = { previewView },
-//                    modifier = Modifier
-//                        .fillMaxSize()
-//                )
+                AndroidView(
+                    factory = { previewView },
+                    modifier = Modifier
+                        .fillMaxSize()
+                )
 
                 Box(
                     modifier = Modifier

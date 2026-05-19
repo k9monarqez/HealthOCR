@@ -3,18 +3,20 @@ package com.example.healthocr
 import android.app.Application
 import android.graphics.Bitmap
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthocr.db.AppRoomDatabase
+import com.example.healthocr.db.Metric
 import com.example.healthocr.db.SessionInfo
+import com.example.healthocr.db.SessionWithMetrics
 import com.example.healthocr.ocr.devices.Device
+import com.example.healthocr.pages.acceptWindows.AcceptWindow
+import com.example.healthocr.pages.statistics.ChartPeriod
 import com.example.healthocr.storage.repositories.DeviceParameters
 import com.example.healthocr.storage.repositories.DeviceRepository
 import com.example.healthocr.storage.Metrics
-import com.example.healthocr.storage.repositories.Session
+import com.example.healthocr.storage.repositories.MetricsRepository
 import com.example.healthocr.storage.repositories.SessionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,14 +37,6 @@ class AppViewModel(
     private val _darkBackground = MutableStateFlow(false)
     var darkBackground: StateFlow<Boolean> = _darkBackground.asStateFlow()
 
-    fun showDarkBG(){
-        _darkBackground.value = true
-    }
-
-    fun hideDarkBG(){
-        _darkBackground.value = false
-    }
-
     override fun onCleared() {
         super.onCleared()
         cameraExecutor.shutdown()
@@ -62,6 +56,7 @@ class AppViewModel(
 
     private val deviceRepository: DeviceRepository
     private val sessionRepository: SessionRepository
+    private val metricsRepository: MetricsRepository
 
     private val _devices = MutableStateFlow<List<DeviceParameters>>(emptyList())
     val devices: StateFlow<List<DeviceParameters>> = _devices.asStateFlow()
@@ -69,24 +64,23 @@ class AppViewModel(
     private val _bitmaps = MutableStateFlow<MutableMap<Long, MutableState<Bitmap?>>>(mutableMapOf())
     val bitmaps: StateFlow<Map<Long, MutableState<Bitmap?>>> = _bitmaps.asStateFlow()
 
-    private val _selectedDeviceType = MutableStateFlow<String?>(null)
-    val selectedDeviceType: StateFlow<String?> = _selectedDeviceType.asStateFlow()
-
-    fun setSelectedDeviceType(deviceType: String){
-        _selectedDeviceType.value = deviceType
-    }
-
     private val _selectedDevice = MutableStateFlow<DeviceParameters?>(null)
     val selectedDevice: StateFlow<DeviceParameters?> = _selectedDevice.asStateFlow()
 
-    private val _sessions = MutableStateFlow<List<Session>>(emptyList())
-    val sessions: StateFlow<List<Session>> = _sessions.asStateFlow()
+    private val _sessions = MutableStateFlow<List<SessionWithMetrics>>(emptyList())
+    val sessions: StateFlow<List<SessionWithMetrics>> = _sessions.asStateFlow()
 
-    private val _selectedSession = MutableStateFlow<Session?>(null)
-    val selectedSession: StateFlow<Session?> = _selectedSession.asStateFlow()
+    private val _selectedSession = MutableStateFlow<SessionWithMetrics?>(null)
+    val selectedSession: StateFlow<SessionWithMetrics?> = _selectedSession.asStateFlow()
 
-    private val _selectedSessionsMask = MutableStateFlow(mutableStateListOf<Boolean>())
-    val selectedSessionsMask: StateFlow<SnapshotStateList<Boolean>> = _selectedSessionsMask.asStateFlow()
+    private val _newestMetrics = MutableStateFlow<Map<Metrics, String>>(mapOf())
+    val newestMetrics: StateFlow<Map<Metrics, String>> = _newestMetrics.asStateFlow()
+
+    fun loadNewestMetrics(){
+        viewModelScope.launch(Dispatchers.IO){
+            _newestMetrics.value = metricsRepository.getNewestMetricsOfEveryType()
+        }
+    }
 
     fun loadSession(sessionID: Long){
         viewModelScope.launch(Dispatchers.IO) {
@@ -103,6 +97,7 @@ class AppViewModel(
         val appDAO = db.getAppDAO()
         deviceRepository = DeviceRepository(application.applicationContext, appDAO)
         sessionRepository = SessionRepository(application.applicationContext, appDAO)
+        metricsRepository = MetricsRepository(application.applicationContext, appDAO)
 
         viewModelScope.launch(Dispatchers.IO) {
             _devices.value = deviceRepository.getDevices()
@@ -145,29 +140,25 @@ class AppViewModel(
         viewModelScope.launch(Dispatchers.IO){
             selectedDevice.value?.let { device ->
                 val sessionID = sessionRepository.addSession(sessionTime, device.id)
-                sessionRepository.addMetrics(metrics, sessionID)
+                metricsRepository.addMetrics(metrics, sessionID)
             }
         }
     }
 
-    fun loadSessionsWithMetrics(type: String? = null){
+    fun loadSessions(){
         viewModelScope.launch(Dispatchers.IO){
-            _sessions.value = sessionRepository.getSessionsWithMetrics(type, _sortDescending.value)
-            _selectedSessionsMask.value.clear()
-            _selectedSessionsMask.value.apply {
-                repeat(_sessions.value.size){ add(false) }
-            }
+            _sessions.value = sessionRepository.getAllSessions( _sortDescending.value)
         }
     }
 
-    fun deleteSessions(sessions: List<SessionInfo>){
+    fun deleteSession(session: SessionInfo){
         viewModelScope.launch(Dispatchers.IO){
-            sessionRepository.deleteSessions(sessions)
-            loadSessionsWithMetrics(_selectedDeviceType.value)
+            sessionRepository.deleteSessions(session)
+            loadSessions()
         }
     }
 
-    fun updateSessionWithMetrics(session: Session){
+    fun updateSession(session: SessionWithMetrics){
         viewModelScope.launch(Dispatchers.IO){
             sessionRepository.updateSessionWithMetrics(session)
         }
@@ -178,5 +169,34 @@ class AppViewModel(
 
     fun flipSortingOrder(){
         _sortDescending.value = !_sortDescending.value
+    }
+
+    private val _currentWindow = MutableStateFlow<AcceptWindow>(AcceptWindow.None)
+    val currentWindow: StateFlow<AcceptWindow> = _currentWindow.asStateFlow()
+
+    fun setAcceptWindow(window: AcceptWindow){
+        _darkBackground.value = true
+        _currentWindow.value = window
+    }
+
+    fun clearAcceptWindow(){
+        _darkBackground.value = false
+        _currentWindow.value = AcceptWindow.None
+    }
+
+    private val _metricsValues = MutableStateFlow<List<Metric>>(listOf())
+    val metricsValues: StateFlow<List<Metric>> = _metricsValues.asStateFlow()
+
+    fun loadMetrics(metrics: List<Metrics>, current: LocalDateTime){
+        viewModelScope.launch(Dispatchers.IO){
+            _metricsValues.value = metricsRepository.getMetrics(metrics, current, _chartPeriod.value)
+        }
+    }
+
+    private val _chartPeriod = MutableStateFlow(ChartPeriod.DAY)
+    val chartPeriod: StateFlow<ChartPeriod> = _chartPeriod.asStateFlow()
+
+    fun setChartPeriod(period: ChartPeriod){
+        _chartPeriod.value = period
     }
 }

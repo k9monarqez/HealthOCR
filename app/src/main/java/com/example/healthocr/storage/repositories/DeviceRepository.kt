@@ -46,7 +46,7 @@ class DeviceRepository(private val context: Context, private val appDAO: AppDAO)
                                 DeviceParameters(
                                     id = dbDevice.id,
                                     deviceType = dbDevice.type,
-                                    deviceName = dbDevice.model,
+                                    deviceName = dbDevice.name,
                                     deviceImageURI = dbDevice.imagePath,
                                     stages = it
                                 )
@@ -74,7 +74,7 @@ class DeviceRepository(private val context: Context, private val appDAO: AppDAO)
                 DBDevice(
                     id = 0,
                     type = device.type.name,
-                    model = deviceName,
+                    name = deviceName,
                     stages = adapter.toJson(stagesParamsMap),
                     imagePath = storeDeviceBitmap(deviceBitmap),
                     isDeleted = 0

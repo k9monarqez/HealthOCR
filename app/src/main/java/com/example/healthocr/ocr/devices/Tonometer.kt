@@ -117,6 +117,7 @@ class Tonometer: Device {
             }
 
             time = LocalDateTime.now()
+            println(time)
 
             tess.recycle()
             return true

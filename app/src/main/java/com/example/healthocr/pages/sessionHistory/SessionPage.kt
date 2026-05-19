@@ -1,4 +1,4 @@
-package com.example.healthocr.pages.records
+package com.example.healthocr.pages.sessionHistory
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,24 +26,28 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.healthocr.db.SessionInfo
-import com.example.healthocr.storage.repositories.Session
+import com.example.healthocr.db.SessionWithMetrics
+import com.example.healthocr.storage.Metrics
 import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 @Composable
-fun Record(viewModel: AppViewModel, sessionID: Long){
+fun SessionPage(viewModel: AppViewModel, sessionID: Long){
     val session by viewModel.selectedSession.collectAsState()
     val devices by viewModel.devices.collectAsState()
 
     var isModifying by remember { mutableStateOf(false) }
-    LaunchedEffect(isModifying) {
+    LaunchedEffect(Unit) {
         viewModel.loadSession(sessionID)
     }
 
     session?.let { session ->
-        val mutableMetrics = remember { session.metrics.map { it.key to mutableStateOf(it.value) }.toMap().toMutableMap() }
-        val mutableMetricsBackup = remember { session.metrics.map { it.key to it.value }.toMap() }
+        val mutableMetrics = remember(session) {
+            session.metrics.associate { Metrics.getTypeByMetricCode(it.type) to mutableStateOf(it.value)}.toMutableMap()
+        }
+        val mutableMetricsBackup = remember(session) {
+            session.metrics.associate { Metrics.getTypeByMetricCode(it.type) to it.value }
+        }
 
         BoxWithConstraints(
             modifier = Modifier
@@ -75,10 +79,18 @@ fun Record(viewModel: AppViewModel, sessionID: Long){
                     "Создано: ${timeOfCreationString.first + ", " + timeOfCreationString.second}",
                     fontSize = 20.sp
                 )
-                val timeOfUpdatingString = null
+                val timeOfUpdatingString = session.sessionInfo.updated?.let {
+                    timestampToString(
+                        LocalDateTime.ofEpochSecond(
+                            it,
+                            0,
+                            ZoneOffset.UTC
+                        )
+                    )
+                }
                 timeOfUpdatingString?.let {
                     Text(
-                        "Обновлено: ${timeOfCreationString.first + ", " + timeOfCreationString.second}",
+                        "Обновлено: ${it.first + ", " + it.second}",
                         fontSize = 20.sp
                     )
                 }
@@ -109,11 +121,11 @@ fun Record(viewModel: AppViewModel, sessionID: Long){
                                         if (metricState == "0") newString =
                                             newString.replace("0", "")
                                         if ('.' in metric.key.allowedSymbols) {
-                                            (newString.filter { it.isDigit() || it == '.' }
+                                            (newString.filter { value -> value.isDigit() || value == '.' }
                                                 .trimStart('0').toDoubleOrNull() ?: 0.0)
                                                 .coerceIn(metric.key.range!!).toString()
                                         } else {
-                                            (newString.filter { it.isDigit() }.trimStart('0')
+                                            (newString.filter { value -> value.isDigit() }.trimStart('0')
                                                 .toDoubleOrNull() ?: 0.0)
                                                 .coerceIn(metric.key.range!!).toInt().toString()
                                         }
@@ -150,15 +162,20 @@ fun Record(viewModel: AppViewModel, sessionID: Long){
                     }
                     Button(
                         onClick = {
-                            viewModel.updateSessionWithMetrics(
-                                Session(
+                            viewModel.updateSession(
+                                SessionWithMetrics(
                                     sessionInfo = session.sessionInfo.copy(updated = LocalDateTime.now().toEpochSecond(ZoneOffset.UTC)),
-                                    metrics = mutableMetrics.map { it.key to it.value.value }.toMap(),
-                                    metricsID = session.metricsID
+                                    metrics = mutableMetrics.toList().mapIndexed { i, pair ->
+                                        val metricValue = pair.second.value
+                                        session.metrics[i].copy(
+                                            value = metricValue
+                                        )
+                                    }.toList()
                                 )
                             )
 
                             isModifying = false
+                            viewModel.loadSession(sessionID)
                         }
                     ) {
                         Text("Сохранить")

@@ -9,7 +9,7 @@ import androidx.room.PrimaryKey
 import androidx.room.Relation
 
 @Entity(
-    tableName = "numeric_metrics",
+    tableName = "metrics",
     indices = [Index("id")],
     foreignKeys = [
         ForeignKey(
@@ -20,30 +20,14 @@ import androidx.room.Relation
         )
     ]
 )
-data class NumericMetric(
-    @PrimaryKey(autoGenerate = true) val id: Long,
-    val type: String,
-    val value: Long,
-    @ColumnInfo(name = "session_id") val sessionID: Long
-)
-
-@Entity(
-    tableName = "string_metrics",
-    indices = [Index("id")],
-    foreignKeys = [
-        ForeignKey(
-            entity = SessionInfo::class,
-            parentColumns = ["id"],
-            childColumns = ["session_id"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ]
-)
-data class StringMetric(
+data class Metric(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val type: String,
     val value: String,
-    @ColumnInfo(name = "session_id") val sessionID: Long
+    @ColumnInfo(name = "session_id") val sessionID: Long?,
+    val created: Long,
+    val updated: Long?,
+    val isDeleted: Long
 )
 
 @Entity(
@@ -53,7 +37,7 @@ data class StringMetric(
 data class DBDevice(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val type: String,
-    val model: String,
+    val name: String,
     val stages: String,
     @ColumnInfo(name = "image_path") val imagePath: String,
     @ColumnInfo(name = "is_deleted") val isDeleted: Long
@@ -74,22 +58,16 @@ data class SessionInfo(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "device_id") val deviceID: Long,
     val created: Long,
-    val updated: Long? = null
+    val updated: Long?
 )
 
 data class SessionWithMetrics(
     @Embedded
-    val session: SessionInfo,
+    val sessionInfo: SessionInfo,
 
     @Relation(
         parentColumn = "id",
         entityColumn = "session_id"
     )
-    val numericMetrics: List<NumericMetric>,
-
-    @Relation(
-        parentColumn = "id",
-        entityColumn = "session_id"
-    )
-    val stringMetrics: List<StringMetric>
+    val metrics: List<Metric>
 )

@@ -38,30 +38,49 @@ interface AppDAO {
             WHERE id = :id
         """
     )
-    fun getSession(id: Long): SessionWithMetrics
-
-    @Delete
-    fun deleteSessions(ids: List<SessionInfo>)
+    fun getSessionWithMetrics(id: Long): SessionWithMetrics
 
     @Insert
     fun addSession(session: SessionInfo): Long
 
-    @Insert
-    fun addNumericMetrics(metrics: List<NumericMetric>)
+    @Delete
+    fun deleteSession(session: SessionInfo)
+
+    @Query(
+        """
+            SELECT *
+            FROM metrics
+            WHERE type IN (:types)
+            AND created BETWEEN :start AND :end
+            ORDER BY created DESC
+            """
+    )
+    fun getMetrics(start: Long, end: Long, types: List<String>): List<Metric>
 
     @Insert
-    fun addStringMetrics(metrics: List<StringMetric>)
+    fun addMetric(metric: Metric)
+
+    @Insert
+    fun addMetrics(metrics: List<Metric>)
+
+    @Update
+    fun updateMetrics(metrics: List<Metric>)
+
+    @Query("""
+        SELECT * FROM metrics
+        WHERE (type, created) IN (
+            SELECT type, MAX(created)
+            FROM metrics
+            WHERE type IN (:types)
+            GROUP BY type
+        )
+    """)
+    fun getNewestMetricsOfTypes(types: List<String>): List<Metric>
 
     @Transaction
     @RawQuery
-    suspend fun getAllSessionsWithMetrics(query: SupportSQLiteQuery): List<SessionWithMetrics>
+    suspend fun getAllSessions(query: SupportSQLiteQuery): List<SessionWithMetrics>
 
     @Update
     fun updateSession(sessionInfo: SessionInfo)
-
-    @Update
-    fun updateNumericMetrics(numericMetrics: List<NumericMetric>)
-
-    @Update
-    fun updateStringMetrics(stringMetrics: List<StringMetric>)
 }
