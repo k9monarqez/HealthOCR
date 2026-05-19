@@ -46,9 +46,9 @@ class SessionRepository(private val context: Context, private val appDAO: AppDAO
         }
     }
 
-    suspend fun deleteSessions(sessions: List<SessionInfo>){
+    suspend fun deleteSessions(session: SessionInfo){
         withContext(Dispatchers.IO){
-            appDAO.deleteSessions(sessions)
+            appDAO.deleteSession(session)
         }
     }
     

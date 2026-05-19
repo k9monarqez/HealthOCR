@@ -7,9 +7,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.healthocr.db.AppRoomDatabase
+import com.example.healthocr.db.Metric
 import com.example.healthocr.db.SessionInfo
 import com.example.healthocr.db.SessionWithMetrics
 import com.example.healthocr.ocr.devices.Device
+import com.example.healthocr.pages.acceptWindows.AcceptWindow
+import com.example.healthocr.pages.statistics.ChartPeriod
 import com.example.healthocr.storage.repositories.DeviceParameters
 import com.example.healthocr.storage.repositories.DeviceRepository
 import com.example.healthocr.storage.Metrics
@@ -33,14 +36,6 @@ class AppViewModel(
 
     private val _darkBackground = MutableStateFlow(false)
     var darkBackground: StateFlow<Boolean> = _darkBackground.asStateFlow()
-
-    fun showDarkBG(){
-        _darkBackground.value = true
-    }
-
-    fun hideDarkBG(){
-        _darkBackground.value = false
-    }
 
     override fun onCleared() {
         super.onCleared()
@@ -77,6 +72,15 @@ class AppViewModel(
 
     private val _selectedSession = MutableStateFlow<SessionWithMetrics?>(null)
     val selectedSession: StateFlow<SessionWithMetrics?> = _selectedSession.asStateFlow()
+
+    private val _newestMetrics = MutableStateFlow<Map<Metrics, String>>(mapOf())
+    val newestMetrics: StateFlow<Map<Metrics, String>> = _newestMetrics.asStateFlow()
+
+    fun loadNewestMetrics(){
+        viewModelScope.launch(Dispatchers.IO){
+            _newestMetrics.value = metricsRepository.getNewestMetricsOfEveryType()
+        }
+    }
 
     fun loadSession(sessionID: Long){
         viewModelScope.launch(Dispatchers.IO) {
@@ -147,9 +151,9 @@ class AppViewModel(
         }
     }
 
-    fun deleteSessions(sessions: List<SessionInfo>){
+    fun deleteSession(session: SessionInfo){
         viewModelScope.launch(Dispatchers.IO){
-            sessionRepository.deleteSessions(sessions)
+            sessionRepository.deleteSessions(session)
             loadSessions()
         }
     }
@@ -165,5 +169,34 @@ class AppViewModel(
 
     fun flipSortingOrder(){
         _sortDescending.value = !_sortDescending.value
+    }
+
+    private val _currentWindow = MutableStateFlow<AcceptWindow>(AcceptWindow.None)
+    val currentWindow: StateFlow<AcceptWindow> = _currentWindow.asStateFlow()
+
+    fun setAcceptWindow(window: AcceptWindow){
+        _darkBackground.value = true
+        _currentWindow.value = window
+    }
+
+    fun clearAcceptWindow(){
+        _darkBackground.value = false
+        _currentWindow.value = AcceptWindow.None
+    }
+
+    private val _metricsValues = MutableStateFlow<List<Metric>>(listOf())
+    val metricsValues: StateFlow<List<Metric>> = _metricsValues.asStateFlow()
+
+    fun loadMetrics(metrics: List<Metrics>, current: LocalDateTime){
+        viewModelScope.launch(Dispatchers.IO){
+            _metricsValues.value = metricsRepository.getMetrics(metrics, current, _chartPeriod.value)
+        }
+    }
+
+    private val _chartPeriod = MutableStateFlow(ChartPeriod.DAY)
+    val chartPeriod: StateFlow<ChartPeriod> = _chartPeriod.asStateFlow()
+
+    fun setChartPeriod(period: ChartPeriod){
+        _chartPeriod.value = period
     }
 }

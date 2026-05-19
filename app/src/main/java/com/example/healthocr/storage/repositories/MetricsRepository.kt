@@ -4,39 +4,37 @@ import android.content.Context
 import androidx.sqlite.db.SimpleSQLiteQuery
 import com.example.healthocr.db.AppDAO
 import com.example.healthocr.db.Metric
+import com.example.healthocr.pages.statistics.ChartPeriod
 import com.example.healthocr.storage.Metrics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.collections.forEach
 
 class MetricsRepository(private val context: Context, private val appDAO: AppDAO){
-    suspend fun getMetrics(type: String? = null, sortDescending: Boolean = true){
-        withContext(Dispatchers.IO){
-            val sortingOrder = if(sortDescending) "DESC" else "ASC"
+    suspend fun getMetrics(types: List<Metrics>, current: LocalDateTime, chartPeriod: ChartPeriod): List<Metric>{
+        return withContext(Dispatchers.IO){
+            val startDate = getStartOfDate(current, chartPeriod)
 
-            val query = if(type != null){
-                SimpleSQLiteQuery(
-                    """
-                    SELECT *
-                    FROM metrics
-                    WHERE type = '$type'
-                    ORDER BY created $sortingOrder
-                """
-                )
-            }
-            else {
-                SimpleSQLiteQuery(
-                    """
-                        SELECT * 
-                        FROM metrics 
-                        ORDER BY created $sortingOrder
-                """
-                )
-            }
+            val endDate = getEndOfDate(current, chartPeriod)
 
-            val metrics = appDAO.getMetrics(query)
+            val metrics = appDAO.getMetrics(startDate, endDate, types.map { it.metricCode })
+            return@withContext metrics
+        }
+    }
+
+    suspend fun getNewestMetricsOfEveryType(): Map<Metrics, String>{
+        return withContext(Dispatchers.IO){
+            val metricsCodes = Metrics.entries.map { it.metricCode }
+
+            appDAO.getNewestMetricsOfTypes(metricsCodes).associate {
+                Metrics.getTypeByMetricCode(it.type) to it.value
+            }
         }
     }
 
@@ -80,6 +78,61 @@ class MetricsRepository(private val context: Context, private val appDAO: AppDAO
                     isDeleted = 0L
                 )
             )
+        }
+    }
+}
+
+fun getStartOfDate(current: LocalDateTime = LocalDateTime.now(), chartPeriod: ChartPeriod): Long{
+    val date = current.toLocalDate()
+    return when(chartPeriod){
+        ChartPeriod.DAY -> {
+            date
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli() / 1000
+        }
+        ChartPeriod.WEEK -> {
+            date
+                .with(DayOfWeek.MONDAY)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli() / 1000
+        }
+        ChartPeriod.MONTH -> {
+            date
+                .withDayOfMonth(1)
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli() / 1000
+        }
+    }
+}
+
+fun getEndOfDate(current: LocalDateTime = LocalDateTime.now(), chartPeriod: ChartPeriod): Long {
+    val date = current.toLocalDate()
+    return when(chartPeriod){
+        ChartPeriod.DAY -> {
+            date
+                .atTime(LocalTime.MAX)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli() / 1000
+        }
+        ChartPeriod.WEEK -> {
+            date
+                .with(DayOfWeek.SUNDAY)
+                .atTime(LocalTime.MAX)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli() / 1000
+        }
+        ChartPeriod.MONTH -> {
+            date
+                .withDayOfMonth(date.lengthOfMonth())
+                .atTime(LocalTime.MAX)
+                .atZone(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli() / 1000
         }
     }
 }

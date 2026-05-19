@@ -84,4 +84,6 @@ dependencies {
     implementation("com.squareup.moshi:moshi-adapters:1.15.2")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.2")
     ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
+
+    implementation ("io.github.ehsannarmani:compose-charts:0.2.5")
 }

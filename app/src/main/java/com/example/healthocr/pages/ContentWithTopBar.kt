@@ -46,13 +46,13 @@ fun ContentWithTopBar(viewModel: AppViewModel, name: String, paddingValues: Padd
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            val topBarHeight = pageHeight * 0.1f
+            val topBarHeight = pageHeight * 0.125f
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(topBarHeight)
                     .background(BarColor),
-                contentAlignment = Alignment.BottomCenter
+                contentAlignment = Alignment.Center
             ){
                 //val displayCutoutPadding = with(LocalDensity.current){ WindowInsets.displayCutout.asPaddingValues().calculateTopPadding().toPx() }
                 BoxWithConstraints(

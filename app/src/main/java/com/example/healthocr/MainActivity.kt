@@ -32,7 +32,8 @@ import androidx.navigation.compose.rememberNavController
 import com.example.healthocr.nav.AppNavigation
 import com.example.healthocr.nav.BottomNavigationBar
 import com.example.healthocr.nav.NavRoutes
-import com.example.healthocr.pages.sessionHistory.AcceptDeletionWindow
+import com.example.healthocr.pages.acceptWindows.AcceptWindow
+import com.example.healthocr.pages.acceptWindows.AcceptDeletionWindow
 import org.opencv.android.OpenCVLoader
 import java.io.File
 import java.io.FileOutputStream
@@ -85,7 +86,7 @@ fun MainComponent(viewModel: AppViewModel){
 
     DisposableEffect(Unit) {
         onDispose {
-            viewModel.hideDarkBG()
+            viewModel.clearAcceptWindow()
         }
     }
 
@@ -115,7 +116,14 @@ fun MainComponent(viewModel: AppViewModel){
         ){
             val bgWidth = maxWidth
             val bgHeight = maxHeight
-            AcceptDeletionWindow(viewModel, Modifier.height(bgHeight * 0.3f).padding(24.dp))
+            val currentWindow by viewModel.currentWindow.collectAsState()
+
+            when(currentWindow){
+                AcceptWindow.None -> {}
+                is AcceptWindow.DeleteSession -> {
+                    AcceptDeletionWindow(viewModel)
+                }
+            }
         }
     }
 }

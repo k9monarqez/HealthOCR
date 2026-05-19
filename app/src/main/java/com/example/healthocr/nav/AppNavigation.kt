@@ -33,14 +33,16 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.example.healthocr.AppViewModel
 import com.example.healthocr.R
-import com.example.healthocr.ocr.devices.DevicesNames
 import com.example.healthocr.pages.AnalyzedImage
 import com.example.healthocr.pages.ContentWithTopBar
 import com.example.healthocr.pages.DeviceSetup
-import com.example.healthocr.pages.Statistics
+import com.example.healthocr.pages.DevicesList
+import com.example.healthocr.pages.statistics.Statistics
 import com.example.healthocr.pages.camera.Camera
 import com.example.healthocr.pages.sessionHistory.SessionPage
 import com.example.healthocr.pages.sessionHistory.SessionsList
+import com.example.healthocr.pages.statistics.MetricsPage
+import com.example.healthocr.storage.Metrics
 import com.example.healthocr.ui.theme.BarColor
 
 sealed class NavRoutes(val route: String){
@@ -50,6 +52,8 @@ sealed class NavRoutes(val route: String){
     object AnalyzedImage: NavRoutes("analyzedImage")
     object SessionsList: NavRoutes("sessionsList")
     object SessionPage: NavRoutes("sessionPage")
+    object MetricsPage: NavRoutes("chart")
+    object Devices: NavRoutes("devices")
 }
 
 data class BarItem(
@@ -62,7 +66,7 @@ object NavBarItems {
     val BarItems = listOf(
         BarItem(
             title = "Статистика",
-            icon = R.drawable.home,
+            icon = R.drawable.statistics,
             route = NavRoutes.Statistics.route
         ),
         BarItem(
@@ -72,8 +76,13 @@ object NavBarItems {
         ),
         BarItem(
             title = "Сессии",
-            icon = R.drawable.settings,
+            icon = R.drawable.sessionshistory,
             route = NavRoutes.SessionsList.route
+        ),
+        BarItem(
+            title = "Устройства",
+            icon = R.drawable.ic_launcher_foreground,
+            route = NavRoutes.Devices.route
         )
     )
 }
@@ -90,11 +99,12 @@ fun AppNavigation(modifier: Modifier = Modifier,
     val toDeviceSetup = { navController.navigate(NavRoutes.DeviceSetup.route) }
     val toCamera = { navController.navigate(NavRoutes.Camera.route) }
     val toSession: (Long) -> Unit = { navController.navigate(NavRoutes.SessionPage.route + "/$it") }
+    val toMetricsPage: (String) -> Unit = { navController.navigate(NavRoutes.MetricsPage.route + "/$it") }
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
     LaunchedEffect(currentRoute) {
-        viewModel.hideDarkBG()
+        viewModel.clearAcceptWindow()
     }
 
     NavHost(
@@ -115,7 +125,22 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 viewModel.showBottomNavBar.value = true
             }
             ContentWithTopBar(viewModel, "Статистика", scaffoldPaddingValues) {
-                Statistics(viewModel, scaffoldPaddingValues)
+                Statistics(viewModel, toMetricsPage)
+            }
+        }
+        composable(
+            NavRoutes.MetricsPage.route + "/{metrics}",
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){ stackEntry ->
+            val metrics = (stackEntry.arguments?.getString("metrics")?.split(",") ?: listOf())
+                .map { Metrics.getTypeByMetricCode(it) }
+            ContentWithTopBar(viewModel, "Статистика", scaffoldPaddingValues, toPrevious = { navController.popBackStack() }) {
+                MetricsPage(viewModel, metrics)
             }
         }
         composable(
@@ -183,6 +208,19 @@ fun AppNavigation(modifier: Modifier = Modifier,
             val sessionID = stackEntry.arguments?.getLong("sessionID") ?: -1L
             ContentWithTopBar(viewModel, "Запись", scaffoldPaddingValues, toPrevious = { navController.popBackStack() }){
                 SessionPage(viewModel, sessionID)
+            }
+        }
+        composable(
+            NavRoutes.Devices.route,
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){
+            ContentWithTopBar(viewModel, "Устройства", scaffoldPaddingValues) {
+                DevicesList(viewModel)
             }
         }
     }

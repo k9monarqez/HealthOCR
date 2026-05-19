@@ -42,12 +42,14 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.healthocr.AppViewModel
 import com.example.healthocr.R
 import com.example.healthocr.db.SessionWithMetrics
+import com.example.healthocr.pages.acceptWindows.AcceptWindow
 import com.example.healthocr.storage.repositories.DeviceParameters
 import java.time.LocalDateTime
 import java.time.ZoneOffset
@@ -58,6 +60,7 @@ fun SessionsList(viewModel: AppViewModel, toSession: (Long) -> Unit){
     val devices by viewModel.devices.collectAsState()
     val bitmaps by viewModel.bitmaps.collectAsState()
     val sortingOrder by viewModel.sortDescending.collectAsState()
+    val showDarkBG by viewModel.darkBackground.collectAsState()
 
     LaunchedEffect(sortingOrder) {
         viewModel.loadDevices(true)
@@ -80,7 +83,7 @@ fun SessionsList(viewModel: AppViewModel, toSession: (Long) -> Unit){
             sessions.forEachIndexed { i, session ->
                 val currentDevice = devices.firstOrNull { it.id == session.sessionInfo.deviceID }
                 RecordRow(
-                    bitmap = (bitmaps[session.sessionInfo.deviceID]?.value
+                    bitmap = (bitmaps[session.sessionInfo.deviceID]?.value      // TODO("Вылетает")
                         ?: BitmapFactory.decodeResource(
                             LocalResources.current,
                             R.drawable.plus
@@ -111,108 +114,16 @@ fun SessionsList(viewModel: AppViewModel, toSession: (Long) -> Unit){
                             } else {
                                 Modifier
                             }
-                        )
-//                        .background(
-//                            if (selectedSessions[i]) Color.LightGray else Color.Transparent
-//                        )
+                        ),
+                    viewModel = viewModel
                 )
             }
         }
-//        if(selectedSessions.contains(true)){
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .height(rowHeight)
-//                    .background(Color.LightGray)
-//                    .align(Alignment.BottomCenter),
-//                horizontalArrangement = Arrangement.Center
-//            ) {
-//                OutlinedButton(
-//                    onClick = {
-//                        viewModel.showDarkBG()
-//                    },
-//                    modifier = Modifier,
-//                    border = BorderStroke(0.dp, Color.Transparent),
-//                    shape = RectangleShape,
-//                    colors = ButtonColors(
-//                        containerColor = Color.Transparent,
-//                        contentColor = Color.Black,
-//                        disabledContainerColor = Color.Transparent,
-//                        disabledContentColor = Color.Transparent
-//                    )
-//                ) {
-//                    Column(
-//                        modifier = Modifier
-//                            .fillMaxHeight(),
-//                        horizontalAlignment = Alignment.CenterHorizontally,
-//                        verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.Bottom)
-//                    ){
-//                        Icon(
-//                            painter = painterResource(R.drawable.trash),
-//                            contentDescription = "remove",
-//                            tint = Color.Black,
-//                            modifier = Modifier
-//                                .scale(1.5f)
-//                        )
-//                        Text("Удалить")
-//                    }
-//                }
-//            }
-//        }
     }
 }
 
 @Composable
-fun AcceptDeletionWindow(viewModel: AppViewModel, modifier: Modifier){
-//    val sessions by viewModel.sessions.collectAsState()
-//    val selectedSessions by viewModel.selectedSessionsMask.collectAsState()
-//    Box(
-//        modifier = modifier
-//            .fillMaxSize()
-//            .background(Color.White, RoundedCornerShape(10)),
-//        contentAlignment = Alignment.Center
-//    ){
-//        Column(
-//            modifier = Modifier,
-//            horizontalAlignment = Alignment.CenterHorizontally
-//        ){
-//            Text("Вы уверены, что хотите удалить записи в количестве ${ selectedSessions.count { it } } штук?", fontSize = 15.sp, textAlign = TextAlign.Center)
-//            Row(
-//                modifier = Modifier
-//                    .fillMaxWidth(),
-//                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)
-//            ){
-//                Button(
-//                    onClick = {
-//                        viewModel.hideDarkBG()
-//                    }
-//                ) {
-//                    Text("Нет")
-//                }
-//                Button(
-//                    onClick = {
-//                        val filteredSessions = sessions.filterIndexed {i, session ->
-//                            selectedSessions[i]
-//                        }.map { it.sessionInfo }
-//                        viewModel.deleteSessions(filteredSessions)
-//                        viewModel.hideDarkBG()
-//                    },
-//                    colors = ButtonColors(
-//                        containerColor = Color.Red,
-//                        contentColor = Color.White,
-//                        disabledContainerColor = Color.Red,
-//                        disabledContentColor = Color.Red
-//                    )
-//                ){
-//                    Text("Да")
-//                }
-//            }
-//        }
-//    }
-}
-
-@Composable
-fun RecordRow(modifier: Modifier = Modifier, bitmap: ImageBitmap, session: SessionWithMetrics, deviceName: String){
+fun RecordRow(modifier: Modifier = Modifier, bitmap: ImageBitmap, session: SessionWithMetrics, deviceName: String, viewModel: AppViewModel){
     val sheetPadding = 15.dp
     BoxWithConstraints(
         modifier = Modifier
@@ -266,11 +177,24 @@ fun RecordRow(modifier: Modifier = Modifier, bitmap: ImageBitmap, session: Sessi
                 textAlign = TextAlign.End
             )
         }
+        Text(
+            "Удалить",
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .clickable {
+                    viewModel.setAcceptWindow(
+                        AcceptWindow.DeleteSession(session.sessionInfo)
+                    )
+                },
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Bold,
+            textDecoration = TextDecoration.Underline
+        )
     }
 }
 
 fun timestampToString(timestamp: LocalDateTime): Pair<String, String>{
-    return Pair("${timestamp.dayOfMonth}.${("0" + timestamp.monthValue).take(2)}.${timestamp.year}",
-        "${("0" + timestamp.hour).take(2)}:${("0" + timestamp.minute).take(2)}:${("0" + timestamp.second).take(2)}"
+    return Pair("${timestamp.dayOfMonth}.${("0" + timestamp.monthValue).takeLast(2)}.${timestamp.year}",
+        "${("0" + timestamp.hour).takeLast(2)}:${("0" + timestamp.minute).takeLast(2)}:${("0" + timestamp.second).takeLast(2)}"
     )
 }
