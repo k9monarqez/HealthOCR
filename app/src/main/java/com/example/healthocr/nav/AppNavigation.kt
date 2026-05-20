@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,6 +38,7 @@ import com.example.healthocr.pages.AnalyzedImage
 import com.example.healthocr.pages.ContentWithTopBar
 import com.example.healthocr.pages.DeviceSetup
 import com.example.healthocr.pages.DevicesList
+import com.example.healthocr.pages.ExportPage
 import com.example.healthocr.pages.statistics.Statistics
 import com.example.healthocr.pages.camera.Camera
 import com.example.healthocr.pages.sessionHistory.SessionPage
@@ -54,6 +56,7 @@ sealed class NavRoutes(val route: String){
     object SessionPage: NavRoutes("sessionPage")
     object MetricsPage: NavRoutes("chart")
     object Devices: NavRoutes("devices")
+    object Export: NavRoutes("export")
 }
 
 data class BarItem(
@@ -70,20 +73,20 @@ object NavBarItems {
             route = NavRoutes.Statistics.route
         ),
         BarItem(
-            title = "Камера",
-            icon = R.drawable.camera,
-            route = NavRoutes.Camera.route
-        ),
-        BarItem(
             title = "Сессии",
             icon = R.drawable.sessionshistory,
             route = NavRoutes.SessionsList.route
         ),
         BarItem(
+            title = "Камера",
+            icon = R.drawable.camera,
+            route = NavRoutes.Camera.route
+        ),
+        BarItem(
             title = "Устройства",
-            icon = R.drawable.ic_launcher_foreground,
+            icon = R.drawable.tonometer,
             route = NavRoutes.Devices.route
-        )
+        ),
     )
 }
 
@@ -92,7 +95,8 @@ fun AppNavigation(modifier: Modifier = Modifier,
                   navController: NavHostController,
                   startDestination: String = NavRoutes.Camera.route,
                   viewModel: AppViewModel,
-                  scaffoldPaddingValues: PaddingValues
+                  scaffoldPaddingValues: PaddingValues,
+                  snackbarHostState: SnackbarHostState
 )
 {
     val toAnalyzedImage = { navController.navigate(NavRoutes.AnalyzedImage.route) }
@@ -100,6 +104,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
     val toCamera = { navController.navigate(NavRoutes.Camera.route) }
     val toSession: (Long) -> Unit = { navController.navigate(NavRoutes.SessionPage.route + "/$it") }
     val toMetricsPage: (String) -> Unit = { navController.navigate(NavRoutes.MetricsPage.route + "/$it") }
+    val toExport = { navController.navigate(NavRoutes.Export.route) }
 
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
@@ -113,6 +118,22 @@ fun AppNavigation(modifier: Modifier = Modifier,
         modifier = modifier
     ){
         composable(
+            NavRoutes.Export.route,
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = false
+            }
+            ContentWithTopBar(viewModel, "Экспорт в CSV", scaffoldPaddingValues, toPrevious = { navController.popBackStack() }) {
+                ExportPage(viewModel, { navController.popBackStack() }, snackbarHostState)
+            }
+        }
+        composable(
             NavRoutes.Statistics.route,
             enterTransition = {
                 EnterTransition.None
@@ -125,7 +146,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 viewModel.showBottomNavBar.value = true
             }
             ContentWithTopBar(viewModel, "Статистика", scaffoldPaddingValues) {
-                Statistics(viewModel, toMetricsPage)
+                Statistics(viewModel, toMetricsPage, toExport)
             }
         }
         composable(
@@ -219,8 +240,11 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 ExitTransition.None
             }
         ){
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = true
+            }
             ContentWithTopBar(viewModel, "Устройства", scaffoldPaddingValues) {
-                DevicesList(viewModel)
+                DevicesList(viewModel, toDeviceSetup)
             }
         }
     }

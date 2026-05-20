@@ -83,6 +83,12 @@ class DeviceRepository(private val context: Context, private val appDAO: AppDAO)
         }
     }
 
+    suspend fun deleteDevice(deviceID: Long){
+        withContext(Dispatchers.IO){
+            appDAO.deleteDevice(deviceID)
+        }
+    }
+
     suspend fun storeDeviceBitmap(bitmap: Bitmap): String{
         return withContext(Dispatchers.IO){
             val imageName = "${System.currentTimeMillis()}.png"

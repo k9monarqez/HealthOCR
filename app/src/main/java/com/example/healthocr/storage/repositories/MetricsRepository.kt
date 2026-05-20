@@ -17,7 +17,7 @@ import java.time.ZoneOffset
 import kotlin.collections.forEach
 
 class MetricsRepository(private val context: Context, private val appDAO: AppDAO){
-    suspend fun getMetrics(types: List<Metrics>, current: LocalDateTime, chartPeriod: ChartPeriod): List<Metric>{
+    suspend fun getMetricsByChartPeriod(types: List<Metrics>, current: LocalDateTime, chartPeriod: ChartPeriod): List<Metric>{
         return withContext(Dispatchers.IO){
             val startDate = getStartOfDate(current, chartPeriod)
 
@@ -25,6 +25,12 @@ class MetricsRepository(private val context: Context, private val appDAO: AppDAO
 
             val metrics = appDAO.getMetrics(startDate, endDate, types.map { it.metricCode })
             return@withContext metrics
+        }
+    }
+
+    suspend fun getMetrics(types: List<Metrics>, start: Long, end: Long): List<Metric>{
+        return withContext(Dispatchers.IO){
+            appDAO.getMetrics(start, end, types.map { it.metricCode })
         }
     }
 

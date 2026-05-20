@@ -1,4 +1,4 @@
-package com.example.healthocr.pages.camera
+package com.example.healthocr.pages
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -43,8 +43,7 @@ import com.example.healthocr.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModalSheets(viewModel: AppViewModel, deviceSelectorStates: Pair<MutableState<Boolean>, SheetState>, toDeviceSetup: () -> Unit){
-    var showDeviceCreationSelector by remember { mutableStateOf(false) }
-    val deviceCreationSelectorState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val showDeviceCreationSelector = remember { mutableStateOf(false) }
 
     val devices by viewModel.devices.collectAsState()
 
@@ -94,64 +93,72 @@ fun ModalSheets(viewModel: AppViewModel, deviceSelectorStates: Pair<MutableState
                     bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
                         .asImageBitmap(),
                     contentDescription = "Добавить устройство",
-                    onClick = { showDeviceCreationSelector = true; viewModel.clearMat() },
+                    onClick = { showDeviceCreationSelector.value = true; viewModel.clearMat() },
                     modifier = Modifier
                 )
             }
         }
     }
 
-    if(showDeviceCreationSelector){
-        ModalBottomSheet(
-            onDismissRequest = { showDeviceCreationSelector = false },
-            sheetState = deviceCreationSelectorState,
-            dragHandle = { BottomSheetDefaults.DragHandle() },
+    if(showDeviceCreationSelector.value){
+        DeviceCreationSelector(showDeviceCreationSelector, toDeviceSetup)
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeviceCreationSelector(showDeviceCreationSelector: MutableState<Boolean>, toDeviceSetup: () -> Unit){
+    val deviceCreationSelectorState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = { showDeviceCreationSelector.value = false },
+        sheetState = deviceCreationSelectorState,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        modifier = Modifier
+            .displayCutoutPadding()
+    ) {
+        val sheetPadding = 15.dp
+        Column(
             modifier = Modifier
-                .displayCutoutPadding()
-        ) {
-            val sheetPadding = 15.dp
-            Column(
+                .padding(top = sheetPadding, bottom = sheetPadding)
+        ){
+            ModalSheetOption(
+                bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
+                    .asImageBitmap(),
+                contentDescription = "Тонометр",
+                onClick = {
+                    toDeviceSetup()
+                },
                 modifier = Modifier
-                    .padding(top = sheetPadding, bottom = sheetPadding)
-            ){
-                ModalSheetOption(
-                    bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
-                        .asImageBitmap(),
-                    contentDescription = "Тонометр",
-                    onClick = {
-                        toDeviceSetup()
-                    },
-                    modifier = Modifier
-                )
-                ModalSheetOption(
-                    bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
-                        .asImageBitmap(),
-                    contentDescription = "Анализатор крови",
-                    onClick = {},
-                    modifier = Modifier
-                )
-                ModalSheetOption(
-                    bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
-                        .asImageBitmap(),
-                    contentDescription = "Анализатор мочи",
-                    onClick = {},
-                    modifier = Modifier
-                )
-                ModalSheetOption(
-                    bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
-                        .asImageBitmap(),
-                    contentDescription = "Коагулометр",
-                    onClick = {},
-                    modifier = Modifier
-                )
-                ModalSheetOption(
-                    bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
-                        .asImageBitmap(),
-                    contentDescription = "Пульсоксиметр",
-                    onClick = {},
-                    modifier = Modifier
-                )
-            }
+            )
+            ModalSheetOption(
+                bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
+                    .asImageBitmap(),
+                contentDescription = "Анализатор крови",
+                onClick = {},
+                modifier = Modifier
+            )
+            ModalSheetOption(
+                bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
+                    .asImageBitmap(),
+                contentDescription = "Анализатор мочи",
+                onClick = {},
+                modifier = Modifier
+            )
+            ModalSheetOption(
+                bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
+                    .asImageBitmap(),
+                contentDescription = "Коагулометр",
+                onClick = {},
+                modifier = Modifier
+            )
+            ModalSheetOption(
+                bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
+                    .asImageBitmap(),
+                contentDescription = "Пульсоксиметр",
+                onClick = {},
+                modifier = Modifier
+            )
         }
     }
 }

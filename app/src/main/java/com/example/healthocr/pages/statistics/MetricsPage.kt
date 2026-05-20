@@ -57,7 +57,7 @@ fun MetricsPage(viewModel: AppViewModel, metrics: List<Metrics>){
         viewModel.setChartPeriod(ChartPeriod.DAY)
     }
     LaunchedEffect(chartPeriod, selectedDate.value) {
-        viewModel.loadMetrics(metrics, selectedDate.value)
+        viewModel.loadMetricsByChartPeriod(metrics, selectedDate.value)
     }
     LaunchedEffect(chartPeriod) {
         selectedDate.value = LocalDateTime.ofEpochSecond(getStartOfDate(chartPeriod = chartPeriod), 0, ZoneOffset.UTC)

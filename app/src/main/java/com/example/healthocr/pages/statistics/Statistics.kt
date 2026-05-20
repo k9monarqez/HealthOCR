@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,7 +67,8 @@ sealed class ChartMetadata(
 @Composable
 fun Statistics(
     viewModel: AppViewModel,
-    toMetricsPage: (String) -> Unit
+    toMetricsPage: (String) -> Unit,
+    toExport: () -> Unit
 ){
     val chartsMetadata = listOf(
         ChartMetadata.BloodPressure,
@@ -92,6 +95,13 @@ fun Statistics(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ){
+            Button(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                onClick = { toExport() }
+            ){
+                Text("Экспорт в CSV")
+            }
             chartsMetadata.forEach { chart ->
                 val mappedMetrics = mutableMapOf<Metrics, String?>()
                 chart.metricsList.forEach {
