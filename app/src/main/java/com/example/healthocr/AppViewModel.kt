@@ -1,16 +1,24 @@
 package com.example.healthocr
 
 import android.app.Application
+import android.content.ContentValues
+import android.content.Context
 import android.graphics.Bitmap
+import android.os.Environment
+import android.provider.MediaStore
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.application
 import androidx.lifecycle.viewModelScope
 import com.example.healthocr.db.AppRoomDatabase
 import com.example.healthocr.db.Metric
 import com.example.healthocr.db.SessionInfo
 import com.example.healthocr.db.SessionWithMetrics
+import com.example.healthocr.nav.NavRoutes
 import com.example.healthocr.ocr.devices.Device
+import com.example.healthocr.pages.ExportPeriod
+import com.example.healthocr.pages.ExportPeriodData
 import com.example.healthocr.pages.acceptWindows.AcceptWindow
 import com.example.healthocr.pages.statistics.ChartPeriod
 import com.example.healthocr.storage.repositories.DeviceParameters
@@ -18,13 +26,23 @@ import com.example.healthocr.storage.repositories.DeviceRepository
 import com.example.healthocr.storage.Metrics
 import com.example.healthocr.storage.repositories.MetricsRepository
 import com.example.healthocr.storage.repositories.SessionRepository
+import com.example.healthocr.storage.repositories.getEndOfDate
+import com.opencsv.CSVWriter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import org.opencv.core.Mat
+import java.io.File
+import java.io.FileWriter
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -187,9 +205,15 @@ class AppViewModel(
     private val _metricsValues = MutableStateFlow<List<Metric>>(listOf())
     val metricsValues: StateFlow<List<Metric>> = _metricsValues.asStateFlow()
 
-    fun loadMetrics(metrics: List<Metrics>, current: LocalDateTime){
+    fun loadMetricsByChartPeriod(metrics: List<Metrics>, current: LocalDateTime){
         viewModelScope.launch(Dispatchers.IO){
-            _metricsValues.value = metricsRepository.getMetrics(metrics, current, _chartPeriod.value)
+            _metricsValues.value = metricsRepository.getMetricsByChartPeriod(metrics, current, _chartPeriod.value)
+        }
+    }
+
+    suspend fun loadMetrics(metrics: List<Metrics>, start: Long, end: Long) {
+        _metricsValues.value = withContext(Dispatchers.IO) {
+            metricsRepository.getMetrics(metrics, start, end)
         }
     }
 
@@ -204,5 +228,114 @@ class AppViewModel(
         viewModelScope.launch(Dispatchers.IO){
             deviceRepository.deleteDevice(deviceID)
         }
+    }
+
+    private val _exportPeriodData = MutableStateFlow<ExportPeriodData>(ExportPeriodData.DayData(LocalDateTime.now()))
+    val exportPeriodData: StateFlow<ExportPeriodData> = _exportPeriodData.asStateFlow()
+
+    fun setExportPeriodData(exportPeriodData: ExportPeriodData){
+        _exportPeriodData.value = exportPeriodData
+    }
+
+    fun exportMetricsByExportPeriod(exportPeriod: ExportPeriod, fileName: String){
+        viewModelScope.launch(Dispatchers.IO){
+            when(exportPeriod){
+                ExportPeriod.DAY -> {
+                    val day = (_exportPeriodData.value as ExportPeriodData.DayData).day
+                        .toLocalDate()
+
+                    val start = day
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toEpochSecond()
+
+                    val end = day
+                        .atTime(LocalTime.MAX)
+                        .atZone(ZoneId.systemDefault())
+                        .toEpochSecond()
+                    loadMetrics(Metrics.entries, start, end)
+                    println(_metricsValues.value.size)
+                    exportToCSV(fileName)
+                }
+                ExportPeriod.LAST_7_DAYS -> {
+                    val end = LocalDate.now()
+                        .atTime(LocalTime.MAX)
+                        .atZone(ZoneId.systemDefault())
+                        .toEpochSecond()
+
+                    val start = LocalDate.now()
+                        .minusDays(7)
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toEpochSecond()
+                    loadMetrics(Metrics.entries, start, end)
+                    println(_metricsValues.value.size)
+                    exportToCSV(fileName)
+                }
+                ExportPeriod.LAST_30_DAYS -> {
+                    val start = LocalDate.now()
+                        .minusDays(30)
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toEpochSecond()
+
+                    val end = LocalDate.now()
+                        .atTime(LocalTime.MAX)
+                        .atZone(ZoneId.systemDefault())
+                        .toEpochSecond()
+
+                    loadMetrics(Metrics.entries, start, end)
+                    println(_metricsValues.value.size)
+                    exportToCSV(fileName)
+                }
+                ExportPeriod.ANY_PERIOD -> {
+                    val period = (_exportPeriodData.value as ExportPeriodData.PeriodData).period
+
+                    val start = period.first.toLocalDate()
+                        .atStartOfDay(ZoneId.systemDefault())
+                        .toEpochSecond()
+
+                    val end = period.second.toLocalDate()
+                        .atTime(LocalTime.MAX)
+                        .atZone(ZoneId.systemDefault())
+                        .toEpochSecond()
+
+                    loadMetrics(Metrics.entries, start, end)
+                    println(_metricsValues.value.size)
+                    exportToCSV(fileName)
+                }
+            }
+        }
+    }
+
+    private fun exportToCSV(fileName: String){
+        val context = application.applicationContext
+        val fileName = "metrics_${System.currentTimeMillis()}.csv"
+        val csv = File(context.getExternalFilesDir(null), fileName)
+
+        CSVWriter(FileWriter(csv)).use { writer ->
+            writer.writeNext(arrayOf("date", "metric", "value"))
+            _metricsValues.value.forEach { metric ->
+                writer.writeNext(arrayOf(
+                    LocalDateTime.ofEpochSecond(metric.created, 0, ZoneOffset.UTC).toString(),
+                    metric.type,
+                    metric.value
+                ))
+            }
+        }
+
+        val contentValues = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "text/csv")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        }
+
+        val uri = context.contentResolver.insert(
+            MediaStore.Files.getContentUri("external"),
+            contentValues
+        ) ?: return
+
+        context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+            csv.inputStream().use { it.copyTo(outputStream) }
+        }
+
+        csv.delete()
     }
 }

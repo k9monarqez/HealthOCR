@@ -197,8 +197,7 @@ fun RecordRow(modifier: Modifier = Modifier, bitmap: ImageBitmap, session: Sessi
     }
 }
 
-fun timestampToString(timestamp: LocalDateTime): Pair<String, String>{
-    return Pair("${timestamp.dayOfMonth}.${("0" + timestamp.monthValue).takeLast(2)}.${timestamp.year}",
-        "${("0" + timestamp.hour).takeLast(2)}:${("0" + timestamp.minute).takeLast(2)}:${("0" + timestamp.second).takeLast(2)}"
-    )
+fun timestampToString(timestamp: LocalDateTime?): Pair<String, String>{
+    return timestamp?.let{ Pair("${("0" + it.dayOfMonth).takeLast(2)}.${("0" + it.monthValue).takeLast(2)}.${it.year}",
+        "${("0" + it.hour).takeLast(2)}:${("0" + it.minute).takeLast(2)}:${("0" + it.second).takeLast(2)}") } ?: Pair("-", "-")
 }

@@ -86,4 +86,5 @@ dependencies {
     ksp("com.squareup.moshi:moshi-kotlin-codegen:1.15.2")
 
     implementation ("io.github.ehsannarmani:compose-charts:0.2.5")
+    implementation("com.opencsv:opencsv:5.9")
 }
