@@ -199,4 +199,10 @@ class AppViewModel(
     fun setChartPeriod(period: ChartPeriod){
         _chartPeriod.value = period
     }
+
+    fun deleteDevice(deviceID: Long){
+        viewModelScope.launch(Dispatchers.IO){
+            deviceRepository.deleteDevice(deviceID)
+        }
+    }
 }

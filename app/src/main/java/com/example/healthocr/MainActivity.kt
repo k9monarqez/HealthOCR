@@ -34,6 +34,7 @@ import com.example.healthocr.nav.BottomNavigationBar
 import com.example.healthocr.nav.NavRoutes
 import com.example.healthocr.pages.acceptWindows.AcceptWindow
 import com.example.healthocr.pages.acceptWindows.AcceptDeletionWindow
+import com.example.healthocr.pages.acceptWindows.DeleteDeviceWindow
 import org.opencv.android.OpenCVLoader
 import java.io.File
 import java.io.FileOutputStream
@@ -122,6 +123,9 @@ fun MainComponent(viewModel: AppViewModel){
                 AcceptWindow.None -> {}
                 is AcceptWindow.DeleteSession -> {
                     AcceptDeletionWindow(viewModel)
+                }
+                is AcceptWindow.DeleteDevice -> {
+                    DeleteDeviceWindow(viewModel)
                 }
             }
         }

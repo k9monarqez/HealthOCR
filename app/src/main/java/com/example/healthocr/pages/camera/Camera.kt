@@ -1,6 +1,5 @@
 package com.example.healthocr.pages.camera
 
-import android.annotation.SuppressLint
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
@@ -99,6 +98,8 @@ import com.canhub.cropper.CropImageView
 import com.example.healthocr.AppViewModel
 import com.example.healthocr.R
 import com.example.healthocr.ocr.DeviceImageProcessing
+import com.example.healthocr.pages.ModalSheets
+import com.example.healthocr.pages.deviceTypeToRu
 import org.opencv.android.Utils
 import org.opencv.core.CvType
 import org.opencv.core.Mat

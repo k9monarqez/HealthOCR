@@ -37,6 +37,7 @@ import com.example.healthocr.pages.AnalyzedImage
 import com.example.healthocr.pages.ContentWithTopBar
 import com.example.healthocr.pages.DeviceSetup
 import com.example.healthocr.pages.DevicesList
+import com.example.healthocr.pages.ExportPage
 import com.example.healthocr.pages.statistics.Statistics
 import com.example.healthocr.pages.camera.Camera
 import com.example.healthocr.pages.sessionHistory.SessionPage
@@ -54,6 +55,7 @@ sealed class NavRoutes(val route: String){
     object SessionPage: NavRoutes("sessionPage")
     object MetricsPage: NavRoutes("chart")
     object Devices: NavRoutes("devices")
+    object Export: NavRoutes("export")
 }
 
 data class BarItem(
@@ -70,19 +72,24 @@ object NavBarItems {
             route = NavRoutes.Statistics.route
         ),
         BarItem(
-            title = "Камера",
-            icon = R.drawable.camera,
-            route = NavRoutes.Camera.route
-        ),
-        BarItem(
             title = "Сессии",
             icon = R.drawable.sessionshistory,
             route = NavRoutes.SessionsList.route
         ),
         BarItem(
+            title = "Камера",
+            icon = R.drawable.camera,
+            route = NavRoutes.Camera.route
+        ),
+        BarItem(
             title = "Устройства",
-            icon = R.drawable.ic_launcher_foreground,
+            icon = R.drawable.tonometer,
             route = NavRoutes.Devices.route
+        ),
+        BarItem(
+            title = "Экспорт",
+            icon = R.drawable.export,
+            route = NavRoutes.Export.route
         )
     )
 }
@@ -112,6 +119,22 @@ fun AppNavigation(modifier: Modifier = Modifier,
         startDestination = startDestination,
         modifier = modifier
     ){
+        composable(
+            NavRoutes.Export.route,
+            enterTransition = {
+                EnterTransition.None
+            },
+            exitTransition = {
+                ExitTransition.None
+            }
+        ){
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = true
+            }
+            ContentWithTopBar(viewModel, "Экспорт в CSV", scaffoldPaddingValues) {
+                ExportPage(viewModel)
+            }
+        }
         composable(
             NavRoutes.Statistics.route,
             enterTransition = {
@@ -219,8 +242,11 @@ fun AppNavigation(modifier: Modifier = Modifier,
                 ExitTransition.None
             }
         ){
+            LaunchedEffect(Unit) {
+                viewModel.showBottomNavBar.value = true
+            }
             ContentWithTopBar(viewModel, "Устройства", scaffoldPaddingValues) {
-                DevicesList(viewModel)
+                DevicesList(viewModel, toDeviceSetup)
             }
         }
     }

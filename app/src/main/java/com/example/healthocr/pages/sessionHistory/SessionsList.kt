@@ -101,16 +101,7 @@ fun SessionsList(viewModel: AppViewModel, toSession: (Long) -> Unit){
                         .height(rowHeight)
                         .then(
                             if (i != sessions.size - 1) {
-                                Modifier.drawBehind {
-                                    val y = size.height
-
-                                    drawLine(
-                                        Color.LightGray,
-                                        Offset(0f, y),
-                                        Offset(size.width, y),
-                                        3f
-                                    )
-                                }
+                                Modifier.underline()
                             } else {
                                 Modifier
                             }
@@ -119,6 +110,19 @@ fun SessionsList(viewModel: AppViewModel, toSession: (Long) -> Unit){
                 )
             }
         }
+    }
+}
+
+fun Modifier.underline(): Modifier {
+    return this then Modifier.drawBehind {
+        val y = size.height
+
+        drawLine(
+            Color.LightGray,
+            Offset(0f, y),
+            Offset(size.width, y),
+            3f
+        )
     }
 }
 
