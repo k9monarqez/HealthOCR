@@ -22,6 +22,23 @@ import org.opencv.imgproc.Imgproc
 import java.nio.ByteBuffer
 
 object DeviceImageProcessing {
+    fun adaptiveBinarizationWithoutNoises(mat: Mat, kernelSize: Size, blockSize: Int, C: Double): Mat {
+        val displayMat = mat.clone()
+        Imgproc.cvtColor(displayMat, displayMat, Imgproc.COLOR_RGBA2GRAY)
+        val kernel = Imgproc.getStructuringElement(
+            Imgproc.MORPH_RECT,
+            kernelSize
+        )
+
+        Imgproc.adaptiveThreshold(displayMat, displayMat, 255.0, Imgproc.ADAPTIVE_THRESH_MEAN_C,
+            Imgproc.THRESH_BINARY, blockSize, C)
+        Imgproc.dilate(displayMat, displayMat, kernel)
+        Imgproc.erode(displayMat, displayMat, kernel)
+        Imgproc.erode(displayMat, displayMat, kernel)
+
+        return displayMat
+    }
+
     fun getDisplayArea(mat: Mat, kernelSize: Size, blockSize: Int, C: Double, minDisplaySize: Double): Mat{
         val mainMat = mat.clone()
         Imgproc.cvtColor(mainMat, mainMat, Imgproc.COLOR_RGBA2GRAY)
@@ -61,19 +78,8 @@ object DeviceImageProcessing {
         return dm
     }
 
-    fun getSevenSegmentDigitsMat(mat: Mat, kernelSize: Size, blockSize: Int, C: Double, digitsSizeRange: ClosedRange<Double>): Mat{
+    fun getSevenSegmentDigitsMat(mat: Mat, digitsSizeRange: ClosedRange<Double>): Mat{
         val displayMat = mat.clone()
-        Imgproc.cvtColor(displayMat, displayMat, Imgproc.COLOR_RGBA2GRAY)
-        val kernel = Imgproc.getStructuringElement(
-            Imgproc.MORPH_RECT,
-            kernelSize
-        )
-
-        Imgproc.adaptiveThreshold(displayMat, displayMat, 255.0, Imgproc.ADAPTIVE_THRESH_MEAN_C,
-            Imgproc.THRESH_BINARY, blockSize, C)
-        Imgproc.dilate(displayMat, displayMat, kernel)
-        Imgproc.erode(displayMat, displayMat, kernel)
-        Imgproc.erode(displayMat, displayMat, kernel)
 
         val matArea = displayMat.height() * displayMat.width()
         val areaSizeRule = {cnt: MatOfPoint ->

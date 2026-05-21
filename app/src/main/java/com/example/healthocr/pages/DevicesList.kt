@@ -55,7 +55,7 @@ fun DevicesList(
 
     val showDeviceCreationSelector = remember { mutableStateOf(false) }
     if(showDeviceCreationSelector.value){
-        DeviceCreationSelector(showDeviceCreationSelector, toDeviceSetup)
+        DeviceCreationSelector(viewModel, showDeviceCreationSelector, toDeviceSetup)
     }
 
     BoxWithConstraints(

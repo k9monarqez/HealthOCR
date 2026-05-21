@@ -34,9 +34,6 @@ class SSDSearch: ProcessingStage<SSDSearchParams> {
     override fun process(): Mat {
         return DeviceImageProcessing.getSevenSegmentDigitsMat(
             mat = mat,
-            kernelSize = Size(params.kernelSize, params.kernelSize),
-            blockSize = params.blockSize,
-            C = params.C,
             digitsSizeRange = params.digitsSizeRange.first..params.digitsSizeRange.second
         )
     }
@@ -49,37 +46,7 @@ class SSDSearch: ProcessingStage<SSDSearchParams> {
                 range = 0.0..0.1,
                 onRangeChanged = { setDigitsSizeRange(Pair(it.start, it.endInclusive)) },
             ),
-            ParamController.Slider(
-                label = "Размер ядра",
-                currentValue = params.kernelSize,
-                range = 1.0..15.0,
-                onValueChanged = { setKernelSize(it) }
-            ),
-            ParamController.Slider(
-                label = "Block size",
-                currentValue = params.blockSize.toDouble(),
-                range = 11.0..100.00,
-                onValueChanged = { setBlockSize(it) }
-            ),
-            ParamController.Slider(
-                label = "C",
-                currentValue = params.C,
-                range = 0.1..10.0,
-                onValueChanged = { setC(it) }
-            )
         )
-    }
-
-    fun setKernelSize(kernelSize: Double){
-        _params.value = _params.value.copy(kernelSize = kernelSize)
-    }
-
-    fun setBlockSize(blockSize: Double){
-        if(blockSize.toInt() % 2 != 0) _params.value = _params.value.copy(blockSize = blockSize.toInt())
-    }
-
-    fun setC(C: Double){
-        _params.value = _params.value.copy(C = C)
     }
 
     fun setDigitsSizeRange(digitsSizeRange:  Pair<Double, Double>){

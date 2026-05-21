@@ -1,5 +1,6 @@
 package com.example.healthocr.storage
 
+import com.example.healthocr.ocr.processingStages.BinarizationWithoutNoisesParams
 import com.example.healthocr.ocr.processingStages.DigitsErosionParams
 import com.example.healthocr.ocr.processingStages.DisplaySearchParams
 import com.example.healthocr.ocr.processingStages.SSDSearchParams
@@ -16,6 +17,7 @@ object MoshiSingleton {
                 .withSubtype(DigitsErosionParams::class.java, "DigitsErosionParams")
                 .withSubtype(DisplaySearchParams::class.java, "DisplaySearchParams")
                 .withSubtype(SSDSearchParams::class.java, "SSDSearchParams")
+                .withSubtype(AdaptiveBinarizationWithoutNoisesParams::class.java, "AdaptiveBinarizationWithoutNoisesParams")
         )
         .add(KotlinJsonAdapterFactory())
         .build()
