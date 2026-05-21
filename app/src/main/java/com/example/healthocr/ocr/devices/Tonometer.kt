@@ -3,7 +3,7 @@ package com.example.healthocr.ocr.devices
 import android.graphics.Bitmap
 import androidx.compose.runtime.MutableState
 import androidx.core.graphics.createBitmap
-import com.example.healthocr.ocr.processingStages.BinarizationWithoutNoises
+import com.example.healthocr.ocr.processingStages.AdaptiveBinarizationWithoutNoises
 import com.example.healthocr.ocr.processingStages.ProcessingStage
 import com.example.healthocr.ocr.processingStages.DigitsErosion
 import com.example.healthocr.ocr.processingStages.DisplaySearch
@@ -26,7 +26,7 @@ class Tonometer: Device {
     constructor(){
         pipeline = listOf(
             DisplaySearch(),
-            BinarizationWithoutNoises(),
+            AdaptiveBinarizationWithoutNoises(),
             SSDSearch(),
             DigitsErosion()
         )
