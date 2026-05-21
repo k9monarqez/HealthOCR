@@ -62,6 +62,16 @@ sealed class ChartMetadata(
             return (metrics[Metrics.PULSE] ?: "?") + " ${Metrics.PULSE.unit}"
         }
     }
+
+    object InternationalNormalizedRatio: ChartMetadata(
+        name = "INR",
+        metricsList = listOf(Metrics.INTERNATIONAL_NORMALIZED_RATIO),
+        R.drawable.pulse
+    ) {
+        override fun metricsOverview(metrics: Map<Metrics, String?>): String {
+            return (metrics[Metrics.INTERNATIONAL_NORMALIZED_RATIO] ?: "?") + " ${Metrics.INTERNATIONAL_NORMALIZED_RATIO.unit}"
+        }
+    }
 }
 
 @Composable
@@ -72,7 +82,8 @@ fun Statistics(
 ){
     val chartsMetadata = listOf(
         ChartMetadata.BloodPressure,
-        ChartMetadata.Pulse
+        ChartMetadata.Pulse,
+        ChartMetadata.InternationalNormalizedRatio
     )
 
     val newestMetrics by viewModel.newestMetrics.collectAsState()

@@ -39,6 +39,10 @@ import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.unit.dp
 import com.example.healthocr.AppViewModel
 import com.example.healthocr.R
+import com.example.healthocr.ocr.devices.Coagulometer
+import com.example.healthocr.ocr.devices.DevicesNames
+import com.example.healthocr.ocr.devices.Tonometer
+import com.example.healthocr.pages.sessionHistory.underline
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,22 +74,13 @@ fun ModalSheets(viewModel: AppViewModel, deviceSelectorStates: Pair<MutableState
                 devices.forEachIndexed{ i, device ->
                     ModalSheetOption(
                         bitmap = (bitmaps[i].value ?: BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)).asImageBitmap(),
-                        contentDescription = "${deviceTypeToRu(device.deviceType)}\n${device.deviceName}",
+                        contentDescription = "${DevicesNames.valueOf(device.deviceType).ru}\n${device.deviceName}",
                         onClick = {
                             deviceSelectorStates.first.value = false
                             viewModel.setSelectedDevice(device)
                         },
                         modifier = Modifier
-                            .drawBehind {
-                                val y = size.height
-
-                                drawLine(
-                                    Color.LightGray,
-                                    Offset(0f, y),
-                                    Offset(size.width, y),
-                                    3f
-                                )
-                            }
+                            .underline()
                     )
                 }
 
@@ -101,13 +96,13 @@ fun ModalSheets(viewModel: AppViewModel, deviceSelectorStates: Pair<MutableState
     }
 
     if(showDeviceCreationSelector.value){
-        DeviceCreationSelector(showDeviceCreationSelector, toDeviceSetup)
+        DeviceCreationSelector(viewModel, showDeviceCreationSelector, toDeviceSetup)
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeviceCreationSelector(showDeviceCreationSelector: MutableState<Boolean>, toDeviceSetup: () -> Unit){
+fun DeviceCreationSelector(viewModel: AppViewModel, showDeviceCreationSelector: MutableState<Boolean>, toDeviceSetup: () -> Unit){
     val deviceCreationSelectorState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     ModalBottomSheet(
@@ -127,6 +122,7 @@ fun DeviceCreationSelector(showDeviceCreationSelector: MutableState<Boolean>, to
                     .asImageBitmap(),
                 contentDescription = "Тонометр",
                 onClick = {
+                    viewModel.setDeviceClass(Tonometer())
                     toDeviceSetup()
                 },
                 modifier = Modifier
@@ -149,7 +145,10 @@ fun DeviceCreationSelector(showDeviceCreationSelector: MutableState<Boolean>, to
                 bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
                     .asImageBitmap(),
                 contentDescription = "Коагулометр",
-                onClick = {},
+                onClick = {
+                    viewModel.setDeviceClass(Coagulometer())
+                    toDeviceSetup()
+                },
                 modifier = Modifier
             )
             ModalSheetOption(
@@ -189,12 +188,5 @@ fun ModalSheetOption(bitmap: ImageBitmap, contentDescription: String, onClick: (
 
             Text(contentDescription)
         }
-    }
-}
-
-fun deviceTypeToRu(deviceType: String): String{
-    return when(deviceType){
-        "Tonometer" -> {"Тонометр"}
-        else -> {"Unknown"}
     }
 }

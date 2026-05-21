@@ -13,7 +13,7 @@ enum class DevicesNames(val ru: String){
 fun toDeviceClass(deviceParameters: DeviceParameters): Device?{
     return when(deviceParameters.deviceType){
         DevicesNames.Tonometer.name -> Tonometer(deviceParameters.stages)
-
+        DevicesNames.Coagulometer.name -> Coagulometer(deviceParameters.stages)
         else -> null
     }
 }

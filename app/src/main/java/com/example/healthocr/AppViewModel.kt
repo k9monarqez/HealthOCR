@@ -17,6 +17,7 @@ import com.example.healthocr.db.SessionInfo
 import com.example.healthocr.db.SessionWithMetrics
 import com.example.healthocr.nav.NavRoutes
 import com.example.healthocr.ocr.devices.Device
+import com.example.healthocr.ocr.devices.Tonometer
 import com.example.healthocr.pages.ExportPeriod
 import com.example.healthocr.pages.ExportPeriodData
 import com.example.healthocr.pages.acceptWindows.AcceptWindow
@@ -84,6 +85,13 @@ class AppViewModel(
 
     private val _selectedDevice = MutableStateFlow<DeviceParameters?>(null)
     val selectedDevice: StateFlow<DeviceParameters?> = _selectedDevice.asStateFlow()
+
+    private val _deviceClass = MutableStateFlow<Device>(Tonometer())
+    val deviceClass: StateFlow<Device> = _deviceClass.asStateFlow()
+
+    fun setDeviceClass(device: Device){
+        _deviceClass.value = device
+    }
 
     private val _sessions = MutableStateFlow<List<SessionWithMetrics>>(emptyList())
     val sessions: StateFlow<List<SessionWithMetrics>> = _sessions.asStateFlow()

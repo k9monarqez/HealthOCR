@@ -98,8 +98,8 @@ import com.canhub.cropper.CropImageView
 import com.example.healthocr.AppViewModel
 import com.example.healthocr.R
 import com.example.healthocr.ocr.DeviceImageProcessing
+import com.example.healthocr.ocr.devices.DevicesNames
 import com.example.healthocr.pages.ModalSheets
-import com.example.healthocr.pages.deviceTypeToRu
 import org.opencv.android.Utils
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -298,7 +298,7 @@ fun Camera(
                                                         .size(iconSize)
                                                 )
                                                 Column(){
-                                                    Text(deviceTypeToRu(selectedDevice!!.deviceType), fontWeight = FontWeight.Bold)
+                                                    Text(DevicesNames.valueOf(selectedDevice!!.deviceType).ru, fontWeight = FontWeight.Bold)
                                                     Text(selectedDevice!!.deviceName)
                                                 }
                                             }

@@ -48,6 +48,7 @@ import com.example.healthocr.AppViewModel
 import com.example.healthocr.ocr.DeviceImageProcessing
 import com.example.healthocr.ocr.processingStages.ParamController
 import com.example.healthocr.ocr.devices.Tonometer
+import com.example.healthocr.ocr.devices.toDeviceClass
 import com.example.healthocr.ocr.processingStages.DigitsErosion
 import com.example.healthocr.pages.camera.Camera
 import org.opencv.android.Utils
@@ -91,7 +92,7 @@ fun DeviceSetup(viewModel: AppViewModel, toCamera: () -> Unit){
         }
     }
     else{
-        val deviceClass by remember { mutableStateOf(Tonometer()) }
+        val deviceClass by viewModel.deviceClass.collectAsState()
         var currentProcessingStageIndex by remember { mutableStateOf(0) }
         var currentProcessingStage by remember(currentProcessingStageIndex) {
             mutableStateOf(deviceClass.pipeline[currentProcessingStageIndex])

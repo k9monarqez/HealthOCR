@@ -175,6 +175,7 @@ fun AppNavigation(modifier: Modifier = Modifier,
         ){
             LaunchedEffect(Unit) {
                 viewModel.showBottomNavBar.value = true
+                viewModel.loadDevices()
             }
             Camera(
                 viewModel,
