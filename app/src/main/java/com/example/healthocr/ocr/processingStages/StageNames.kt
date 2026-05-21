@@ -12,7 +12,6 @@ fun toStageClasses(stageParams: StageParams): ProcessingStage<*>{
         is DisplaySearchParams -> DisplaySearch(stageParams)
         is DigitsErosionParams -> DigitsErosion(stageParams)
         is SSDSearchParams -> SSDSearch(stageParams)
-        is BinarizationWithoutNoisesParams -> BinarizationWithoutNoises(stageParams)
         is AdaptiveBinarizationWithoutNoisesParams -> AdaptiveBinarizationWithoutNoises(stageParams)
     }
     return stage

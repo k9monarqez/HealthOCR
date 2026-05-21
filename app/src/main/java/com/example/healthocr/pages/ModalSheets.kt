@@ -42,6 +42,7 @@ import com.example.healthocr.R
 import com.example.healthocr.ocr.devices.Coagulometer
 import com.example.healthocr.ocr.devices.DevicesNames
 import com.example.healthocr.ocr.devices.Tonometer
+import com.example.healthocr.ocr.devices.UrineAnalyzer
 import com.example.healthocr.pages.sessionHistory.underline
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -138,7 +139,10 @@ fun DeviceCreationSelector(viewModel: AppViewModel, showDeviceCreationSelector: 
                 bitmap = BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus)
                     .asImageBitmap(),
                 contentDescription = "Анализатор мочи",
-                onClick = {},
+                onClick = {
+                    viewModel.setDeviceClass(UrineAnalyzer())
+                    toDeviceSetup()
+                },
                 modifier = Modifier
             )
             ModalSheetOption(

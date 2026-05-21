@@ -4,10 +4,9 @@ import android.graphics.Bitmap
 import androidx.compose.runtime.MutableState
 import androidx.core.graphics.createBitmap
 import com.example.healthocr.ocr.processingStages.AdaptiveBinarizationWithoutNoises
-import com.example.healthocr.ocr.processingStages.ProcessingStage
 import com.example.healthocr.ocr.processingStages.DigitsErosion
+import com.example.healthocr.ocr.processingStages.ProcessingStage
 import com.example.healthocr.ocr.processingStages.DisplaySearch
-import com.example.healthocr.ocr.processingStages.SSDSearch
 import com.example.healthocr.ocr.processingStages.StageParams
 import com.example.healthocr.ocr.processingStages.toStageClasses
 import com.example.healthocr.storage.Metrics
@@ -17,18 +16,16 @@ import org.opencv.core.Mat
 import org.opencv.core.MatOfPoint
 import org.opencv.core.Point
 import org.opencv.core.Rect
+import org.opencv.core.Scalar
 import org.opencv.imgproc.Imgproc
 import java.time.LocalDateTime
 
-class Tonometer: Device {
+class UrineAnalyzer: Device {
     override var pipeline: List<ProcessingStage<*>>
 
     constructor(){
         pipeline = listOf(
             DisplaySearch(),
-            AdaptiveBinarizationWithoutNoises(),
-            SSDSearch(),
-            DigitsErosion()
         )
     }
 
@@ -43,19 +40,27 @@ class Tonometer: Device {
 
     companion object {
         val metrics: List<Metrics> = listOf(
-            Metrics.SYSTOLIC_PRESSURE,
-            Metrics.DIASTOLIC_PRESSURE,
-            Metrics.PULSE
+            Metrics.UROBILINOGEN,
+            Metrics.BLOOD,
+            Metrics.BILIRUBIN,
+            Metrics.KETONE,
+            Metrics.LEUCOCYTES,
+            Metrics.GLUCOSE,
+            Metrics.PROTEIN,
+            Metrics.PH,
+            Metrics.NITRITE,
+            Metrics.SPECIFIC_GRAVITY,
+            Metrics.ASCORBIC_ACID
         )
     }
 
-    override val type = DevicesNames.Tonometer
+    override val type = DevicesNames.UrineAnalyzer
     private var metricsMap = metrics.zip(List<String?>(metrics.size){ null }).toMap().toMutableMap()
     private lateinit var time: LocalDateTime
 
     override fun process(sourceMat: Mat, bitmap: MutableState<Bitmap>, dataPath: String): Boolean{
         val tess = TessBaseAPI()
-        if (tess.init(dataPath, "ssd")) {
+        if (tess.init(dataPath, "eng")) {
             var mat = sourceMat.clone()
 
             // Process image with prepared pipeline
@@ -63,12 +68,18 @@ class Tonometer: Device {
                 stage.mat = mat.clone()
                 mat = stage.process()
             }
+            Imgproc.cvtColor(mat, mat, Imgproc.COLOR_RGBA2GRAY)
+            Imgproc.medianBlur(mat, mat, 5)
+            val filteredMat = mat.clone()
+            Imgproc.bilateralFilter(mat, filteredMat, 9, 75.0, 75.0)
+            mat = filteredMat
+            Imgproc.threshold(mat, mat, 128.0, 255.0, Imgproc.THRESH_BINARY_INV or Imgproc.THRESH_OTSU)
 
             // Extract digits from mat with Tesseract
             bitmap.value = createBitmap(mat.width(), mat.height(), Bitmap.Config.ARGB_8888)
             Utils.matToBitmap(mat, bitmap.value)
 
-            val targetWords = listOf("0123456789")
+            val targetWords = metrics.map { it.metricCode } + metrics.map { it.allowedSymbols }
             tess.setVariable("tessedit_char_whitelist", targetWords.joinToString() + targetWords.joinToString().lowercase())
             tess.setImage(bitmap.value)
             var blocks = mutableListOf<Pair<String, Rect>>()
@@ -76,7 +87,7 @@ class Tonometer: Device {
             val utF8Text = tess.utF8Text
 
             val iterator = tess.resultIterator
-            val level = TessBaseAPI.PageIteratorLevel.RIL_WORD
+            val level = TessBaseAPI.PageIteratorLevel.RIL_TEXTLINE
 
             iterator.begin()
             do {
@@ -89,37 +100,37 @@ class Tonometer: Device {
                 val bottomLeft = Point(boundRect.left.toDouble(), boundRect.bottom.toDouble())
 
                 val mop = MatOfPoint(topLeft, topRight, bottomRight, bottomLeft)
-
+                //Imgproc.drawContours(mat, listOf(mop), -1, Scalar(0.0, 255.0, 0.0))
                 if(word != null)
                     blocks.add(Pair(word, Imgproc.boundingRect(mop)))
             } while(iterator.next(level))
 
-            val sortedBlocks = blocks.sortedWith(
-                compareByDescending<Pair<String, Rect>> { it.second.height * it.second.width }
-                    .thenBy { it.second.y }
-            ).map{
-                block -> block.first
-            }.toMutableList<String?>()
-            repeat(metrics.size - sortedBlocks.size){
-                sortedBlocks.add(null)
+            val blocksWithMetrics = blocks.filter { block ->
+                metrics.map { it.metricCode }.any { block.first.contains(it) }
+            }.map { pair ->
+                pair.first
             }
+            println(blocks)
 
-            sortedBlocks[0]?.let{ b0 ->
-                sortedBlocks[1]?.let{ b1 ->
-                    if(b1.toInt() > b0.toInt()) sortedBlocks[0] = sortedBlocks[1].also {sortedBlocks[1] = sortedBlocks[0]}
-                }
-            }
+//            val mappedBlocks = blocksWithMetrics.mapNotNull { block ->
+//                val metricName = Metrics.entries.find { block.contains(it.metricCode) }
+//                metricName?.let {
+//                    it to block
+//                        .replace(it.metricCode, "")
+//                        .trim()
+//                        .replace(" ", "")
+//                }
+//            }.toMap()
+//
+//            mappedBlocks.forEach {
+//                if (it.key.isNumeric && it.value.toDoubleOrNull() != null || !it.key.isNumeric) {
+//                        metricsMap[it.key] = it.value
+//                    }
+//            }
 
-            metrics.forEachIndexed { i, metric ->
-                sortedBlocks[i]?.let { value ->
-                    if(metric.isNumeric && value.toIntOrNull() != null || !metric.isNumeric){
-                        metricsMap[metric] = value
-                    }
-                }
-            }
+            //Utils.matToBitmap(mat, bitmap.value)
 
             time = LocalDateTime.now()
-            println(time)
 
             tess.recycle()
             return true

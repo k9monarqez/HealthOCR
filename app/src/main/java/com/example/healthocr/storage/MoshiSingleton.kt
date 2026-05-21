@@ -1,6 +1,6 @@
 package com.example.healthocr.storage
 
-import com.example.healthocr.ocr.processingStages.BinarizationWithoutNoisesParams
+import com.example.healthocr.ocr.processingStages.AdaptiveBinarizationWithoutNoisesParams
 import com.example.healthocr.ocr.processingStages.DigitsErosionParams
 import com.example.healthocr.ocr.processingStages.DisplaySearchParams
 import com.example.healthocr.ocr.processingStages.SSDSearchParams

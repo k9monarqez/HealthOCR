@@ -29,7 +29,7 @@ object DeviceImageProcessing {
             Imgproc.MORPH_RECT,
             kernelSize
         )
-
+        Imgproc.medianBlur(mat, mat, 5)
         Imgproc.adaptiveThreshold(displayMat, displayMat, 255.0, Imgproc.ADAPTIVE_THRESH_MEAN_C,
             Imgproc.THRESH_BINARY, blockSize, C)
         Imgproc.dilate(displayMat, displayMat, kernel)

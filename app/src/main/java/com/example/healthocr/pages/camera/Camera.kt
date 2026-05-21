@@ -283,13 +283,12 @@ fun Camera(
                                             horizontalArrangement = Arrangement.spacedBy(15.dp, Alignment.Start)
                                         ){
                                             if(selectedDevice != null){
-                                                val iconBitmap = if(selectedDevice != null){
-                                                    (bitmaps[selectedDevice!!.id]?.value ?: BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus))
+                                                val iconBitmap = selectedDevice?.let{
+                                                    (bitmaps[it.id]?.value ?: BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus))
                                                         .asImageBitmap()
-                                                }
-                                                else{
-                                                    BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus).asImageBitmap()
-                                                }
+                                                } ?: BitmapFactory.decodeResource(LocalResources.current, R.drawable.plus).asImageBitmap()
+
+
                                                 Icon(
                                                     bitmap = iconBitmap,
                                                     contentDescription = "Selected device",
